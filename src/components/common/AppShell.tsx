@@ -6,6 +6,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Camera, CalendarDays, User, LayoutGrid, MessageSquare } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { PWAInstallPrompt } from "./PWAInstallPrompt";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -61,6 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="p-3 md:p-8 pb-24 md:pb-8 animate-in fade-in duration-700">
           {children}
         </main>
+        <PWAInstallPrompt />
       </div>
 
       {/* Mobile Bottom Navigation */}
