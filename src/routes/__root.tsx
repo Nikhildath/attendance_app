@@ -81,16 +81,9 @@ function RootContent() {
     }
   }, [loading, user, profile, location.pathname, router]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="rounded-3xl border bg-card p-8 shadow-card text-center">
-          <div className="mb-4 text-sm text-muted-foreground">Loading Attendly...</div>
-          <div className="h-3 w-36 animate-pulse rounded-full bg-muted/70" />
-        </div>
-      </div>
-    );
-  }
+  // We removed the blocking loading screen to prevent the app from hanging.
+  // The AuthProvider still handles auth state, but we allow the app to render immediately.
+
 
   return (
     <>

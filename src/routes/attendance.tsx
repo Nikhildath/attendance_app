@@ -183,20 +183,23 @@ function AttendancePage() {
             // Run this asynchronously to not block the mesh too much
             faceMod.getFaceDescriptor(video).then((desc: any) => {
                 if (desc) {
-                    const score = Math.round(similarity * 100);
-                    setLastSimilarity(score);
+                    const storedDescriptors = (profile as any)?.face_descriptor;
+                    if (storedDescriptors) {
+                        const { isMatch, similarity } = faceMod.compareFaces(desc, storedDescriptors);
+                        const score = Math.round(similarity * 100);
+                        setLastSimilarity(score);
 
-                    // Auto-punch if identity is confirmed and stable (5 frames)
-                    // We rely on 'isMatch' (dist < 0.32) which is already paranoid-level strict.
-                    if (isMatch && state === "scanning" && !hasPunchedThisSession.current) {
-                        matchCounter.current++;
-                        if (matchCounter.current >= 5) {
-                            console.log("Auto-Punch: Identity Confirmed (Paranoid Consensus).");
-                            hasPunchedThisSession.current = true;
-                            saveAttendance();
+                        // Auto-punch if identity is confirmed and stable (5 frames)
+                        if (isMatch && state === "scanning" && !hasPunchedThisSession.current) {
+                            matchCounter.current++;
+                            if (matchCounter.current >= 5) {
+                                console.log("Auto-Punch: Identity Confirmed (Paranoid Consensus).");
+                                hasPunchedThisSession.current = true;
+                                saveAttendance();
+                            }
+                        } else {
+                            matchCounter.current = 0;
                         }
-                    } else {
-                        matchCounter.current = 0;
                     }
                 }
             }).catch(() => {});

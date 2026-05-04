@@ -87,6 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     const initAuth = async () => {
+      // Safety timeout: Never let the app hang on loading for more than 3 seconds
+      const timeoutId = setTimeout(() => {
+        if (mounted) setLoading(false);
+      }, 3000);
+
       try {
         // 1. Check manual session first, validate it hasn't expired
         const savedSession = localStorage.getItem("sb_custom_session");
@@ -102,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (mounted) {
                   setProfile(latestProfile || p);
                   setLoading(false);
+                  clearTimeout(timeoutId);
                   return;
                 }
               } else {
@@ -126,7 +132,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.error("Auth initialization failed:", err);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          clearTimeout(timeoutId);
+        }
       }
     };
 
