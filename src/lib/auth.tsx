@@ -87,42 +87,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     const initAuth = async () => {
-      // 1. Check manual session first, validate it hasn't expired
-      const savedSession = localStorage.getItem("sb_custom_session");
-      if (savedSession) {
-        try {
-          const parsed = JSON.parse(savedSession);
-          if (parsed && parsed.profile && parsed.profile.id) {
-            const { profile: p, timestamp } = parsed;
-            // Check session expiry
-            if (timestamp && Date.now() - timestamp < SESSION_EXPIRY_MS) {
-              // Fetch latest profile from DB to ensure consistency
-              const { data: latestProfile } = await fetchProfileById(p.id);
-              if (mounted) {
-                setProfile(latestProfile || p);
-                setLoading(false);
-                return;
+      try {
+        // 1. Check manual session first, validate it hasn't expired
+        const savedSession = localStorage.getItem("sb_custom_session");
+        if (savedSession) {
+          try {
+            const parsed = JSON.parse(savedSession);
+            if (parsed && parsed.profile && parsed.profile.id) {
+              const { profile: p, timestamp } = parsed;
+              // Check session expiry
+              if (timestamp && Date.now() - timestamp < SESSION_EXPIRY_MS) {
+                // Fetch latest profile from DB to ensure consistency
+                const { data: latestProfile } = await fetchProfileById(p.id);
+                if (mounted) {
+                  setProfile(latestProfile || p);
+                  setLoading(false);
+                  return;
+                }
+              } else {
+                // Session expired, remove it
+                localStorage.removeItem("sb_custom_session");
               }
             } else {
-              // Session expired, remove it
               localStorage.removeItem("sb_custom_session");
             }
-          } else {
+          } catch {
             localStorage.removeItem("sb_custom_session");
           }
-        } catch {
-          localStorage.removeItem("sb_custom_session");
         }
-      }
 
-      // 2. Fallback to Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && mounted) {
-        setUser(session.user);
-        const fetchedProfile = await fetchProfile(session.user);
-        if (mounted) setProfile(fetchedProfile);
+        // 2. Fallback to Supabase session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && mounted) {
+          setUser(session.user);
+          const fetchedProfile = await fetchProfile(session.user);
+          if (mounted) setProfile(fetchedProfile);
+        }
+      } catch (err) {
+        console.error("Auth initialization failed:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-      if (mounted) setLoading(false);
     };
 
     initAuth();
