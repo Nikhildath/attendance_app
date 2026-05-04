@@ -9,14 +9,24 @@ import { createClient } from '@supabase/supabase-js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
 
+// Serve static files from the 'dist' directory if it exists
+const distPath = path.join(__dirname, 'dist');
+app.use(express.static(distPath));
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL || '*',
     credentials: true,
   },
   transports: ['websocket', 'polling'],
@@ -34,6 +44,16 @@ app.use(express.json());
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Socket.io server is running' });
+});
+
+// Wildcard route to serve index.html for SPA routing
+app.get('*', (req, res) => {
+  const indexFile = path.join(distPath, 'index.html');
+  res.sendFile(indexFile, (err) => {
+    if (err) {
+      res.status(404).send('Frontend build not found. Please run npm run build.');
+    }
+  });
 });
 
 // Store connected users and their locations

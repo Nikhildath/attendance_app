@@ -14,6 +14,10 @@ export function PWAInstallPrompt() {
       setDeferredPrompt(e);
       // Update UI notify the user they can install the PWA
       setShowPrompt(true);
+      
+      // Show sidebar button
+      const sidebarBtn = document.getElementById("pwa-install-button-container");
+      if (sidebarBtn) sidebarBtn.classList.remove("hidden");
     };
 
     window.addEventListener("beforeinstallprompt", handler);
@@ -21,10 +25,20 @@ export function PWAInstallPrompt() {
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setShowPrompt(false);
+      const sidebarBtn = document.getElementById("pwa-install-button-container");
+      if (sidebarBtn) sidebarBtn.classList.add("hidden");
     }
 
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
+    // Attach to sidebar button if it exists
+    const handleSidebarInstall = () => handleInstall();
+    const sidebarBtn = document.getElementById("pwa-install-button");
+    if (sidebarBtn) sidebarBtn.addEventListener("click", handleSidebarInstall);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      if (sidebarBtn) sidebarBtn.removeEventListener("click", handleSidebarInstall);
+    };
+  }, [deferredPrompt]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -36,6 +50,8 @@ export function PWAInstallPrompt() {
     // We've used the prompt, and can't use it again, throw it away
     setDeferredPrompt(null);
     setShowPrompt(false);
+    const sidebarBtn = document.getElementById("pwa-install-button-container");
+    if (sidebarBtn) sidebarBtn.classList.add("hidden");
   };
 
   if (!showPrompt) return null;

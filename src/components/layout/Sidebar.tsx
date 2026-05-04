@@ -97,6 +97,17 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
             </Link>
           );
         })}
+        
+        {/* PWA Install Button */}
+        <div id="pwa-install-button-container" className="hidden px-3 pt-4">
+           <button 
+             id="pwa-install-button"
+             className="flex w-full items-center gap-3 rounded-xl bg-primary/10 px-3 py-2.5 text-sm font-bold text-primary border border-primary/20 hover:bg-primary/20 transition-all"
+           >
+             <Clock className="h-[18px] w-[18px]" />
+             {!collapsed && <span>Install App</span>}
+           </button>
+        </div>
       </nav>
 
       <div className="border-t border-white/5 p-4">
@@ -107,6 +118,11 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
           <ChevronLeft className={cn("h-4 w-4 transition-transform duration-300", collapsed && "rotate-180")} />
           {!collapsed && <span>{isMobile ? "Close Menu" : "Collapse Menu"}</span>}
         </button>
+        {!collapsed && (
+          <div className="mt-2 text-center">
+            <span className="text-[10px] font-medium text-zinc-600">v1.2.1-pwa-hotfix</span>
+          </div>
+        )}
       </div>
     </aside>
   );
