@@ -91,18 +91,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const savedSession = localStorage.getItem("sb_custom_session");
       if (savedSession) {
         try {
-          const { profile: p, timestamp } = JSON.parse(savedSession);
-          // Check session expiry
-          if (timestamp && Date.now() - timestamp < SESSION_EXPIRY_MS) {
-            // Fetch latest profile from DB to ensure consistency
-            const { data: latestProfile } = await fetchProfileById(p.id);
-            if (mounted) {
-              setProfile(latestProfile || p);
-              setLoading(false);
-              return;
+          const parsed = JSON.parse(savedSession);
+          if (parsed && parsed.profile && parsed.profile.id) {
+            const { profile: p, timestamp } = parsed;
+            // Check session expiry
+            if (timestamp && Date.now() - timestamp < SESSION_EXPIRY_MS) {
+              // Fetch latest profile from DB to ensure consistency
+              const { data: latestProfile } = await fetchProfileById(p.id);
+              if (mounted) {
+                setProfile(latestProfile || p);
+                setLoading(false);
+                return;
+              }
+            } else {
+              // Session expired, remove it
+              localStorage.removeItem("sb_custom_session");
             }
           } else {
-            // Session expired, remove it
             localStorage.removeItem("sb_custom_session");
           }
         } catch {
