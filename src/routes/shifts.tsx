@@ -160,8 +160,8 @@ function ShiftsPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               <tr>
-                <th className="px-5 py-4 min-w-[200px]">Employee</th>
-                {DAY_LABELS.map((d) => <th key={d} className="px-3 py-4 text-center">{d}</th>)}
+                <th className="px-3 md:px-5 py-4 w-[120px] max-w-[120px] md:w-[200px] md:max-w-[200px] bg-card sticky left-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.1)] truncate">Employee</th>
+                {DAY_LABELS.map((d) => <th key={d} className="px-3 py-4 text-center min-w-[100px]">{d}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -173,9 +173,9 @@ function ShiftsPage() {
                 const sched = schedule.find((s) => s.user_id === m.id);
                 return (
                   <tr key={m.id} className="group transition-colors hover:bg-accent/10">
-                    <td className="px-5 py-4">
-                      <div className="font-bold text-foreground">{m.name}</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-tight">{m.role} • {m.dept || "No Dept"}</div>
+                    <td className="px-3 md:px-5 py-4 bg-card sticky left-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.1)] w-[120px] max-w-[120px] md:w-[200px] md:max-w-[200px]">
+                      <div className="font-bold text-foreground truncate">{m.name}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-tight truncate">{m.role} • {m.dept || "No Dept"}</div>
                     </td>
                     {DAYS.map((d, i) => {
                       const shiftId = sched?.[d];

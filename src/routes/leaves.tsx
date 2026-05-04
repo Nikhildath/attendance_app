@@ -27,6 +27,15 @@ function LeavesPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"my" | "approvals" | "categories">("my");
 
+  // Sync tab with URL search params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab");
+    if (t === "approvals" || t === "categories" || t === "my") {
+      setTab(t as any);
+    }
+  }, []);
+
   const canApprove = isAdmin || isManager;
 
   const loadLeaves = async () => {

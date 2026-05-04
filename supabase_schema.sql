@@ -38,15 +38,13 @@
       name text not null,
       role text not null default 'Employee' check (role in ('Employee', 'Manager', 'Admin')),
       dept text,
-      face_registered boolean default false,
-      face_descriptor jsonb,
       password text, -- For custom login bypass if needed
       branch_id uuid references public.branches(id) on delete set null,
       dob date,
       joining_date date,
       avatar_url text,
-      biometric_registered boolean default false,
-      biometric_credential_id text,
+      passkey_registered boolean default false,
+      passkey_credential_id text,
       created_at timestamptz default now(),
       updated_at timestamptz default now()
   );
@@ -57,8 +55,6 @@
       user_id uuid not null references public.profiles(id) on delete cascade,
       check_in timestamptz,
       check_out timestamptz,
-      location_lat numeric,
-      location_lng numeric,
       branch_id uuid references public.branches(id) on delete set null,
       status text default 'present' check (status in ('present', 'absent', 'late', 'leave', 'holiday')),
       notes text,
@@ -241,10 +237,10 @@
 
   -- RPC: Custom Login Check (Bypasses Auth if needed)
   create or replace function public.check_credentials(p_email text, p_password text)
-  returns table (id uuid, email text, name text, role text, dept text, face_registered boolean, biometric_registered boolean) as $$
+  returns table (id uuid, email text, name text, role text, dept text) as $$
   BEGIN
     RETURN QUERY
-    SELECT p.id, p.email, p.name, p.role, p.dept, p.face_registered, p.biometric_registered
+    SELECT p.id, p.email, p.name, p.role, p.dept
     FROM public.profiles p
     WHERE p.email = p_email AND p.password = p_password
     LIMIT 1;
@@ -271,7 +267,6 @@
       p_role text, 
       p_dept text, 
       p_password text, 
-      p_face boolean,
       p_branch_id uuid default null,
       p_dob date default null,
       p_joining_date date default null,
@@ -286,7 +281,6 @@
         role = p_role, 
         dept = p_dept, 
         password = p_password, 
-        face_registered = p_face, 
         branch_id = p_branch_id,
         dob = p_dob,
         joining_date = p_joining_date,
@@ -441,38 +435,20 @@
   grant execute on function public.upsert_staff_tracking(uuid, numeric, numeric, integer, numeric, numeric, text, text, text, text)
   to postgres, anon, authenticated, service_role;
 
-  -- RPC: Update Own Face Descriptor (Supports Multi-Embeddings)
-  create or replace function public.update_own_face(
-      p_id uuid,
-      p_descriptor jsonb
-  )
-  returns boolean as $$
-  begin
-    update public.profiles
-    set 
-      face_descriptor = p_descriptor,
-      face_registered = true,
-      updated_at = now()
-    where id = p_id;
-
-    return true;
-  end;
-  $$ language plpgsql security definer set search_path = public;
-
-  grant execute on function public.update_own_face(uuid, jsonb)
-  to postgres, anon, authenticated, service_role;
+  -- RPC: Update Own Face Descriptor (REMOVED)
+  -- This function is no longer needed but kept for schema consistency if required by other parts of the app.
+  -- However, since the user wants it deleted, we will remove it.
 
   -- Trigger: Handle New User from Auth
   create or replace function public.handle_new_user()
   returns trigger as $$
   BEGIN
-    INSERT INTO public.profiles (id, email, name, role, face_registered)
+    INSERT INTO public.profiles (id, email, name, role)
     VALUES (
       NEW.id,
       NEW.email,
       COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
-      'Employee',
-      FALSE
+      'Employee'
     );
     RETURN NEW;
   END;

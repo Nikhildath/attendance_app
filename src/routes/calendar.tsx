@@ -59,14 +59,14 @@ function CalendarPage() {
 
       const { data: att } = await supabase
         .from("attendance")
-        .select("status")
+        .select("status, check_in, created_at")
         .eq("user_id", targetId)
         .gte("created_at", start)
         .lt("created_at", end);
 
       const { data: lvs } = await supabase
         .from("leaves")
-        .select("status")
+        .select("status, from_date, to_date")
         .eq("user_id", targetId)
         .eq("status", "Approved")
         .gte("from_date", start.split('T')[0])

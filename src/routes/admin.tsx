@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Search, Trash2, Users, Shield, Building2, Copy, Check, MapPin, Settings as SettingsIcon, Save, PartyPopper, Bell, Info, AlertTriangle, Pin, Megaphone, Calendar } from "lucide-react";
+import { Plus, Search, Trash2, Users, Shield, Building2, Copy, Check, MapPin, Settings as SettingsIcon, Save, PartyPopper, Bell, Info, AlertTriangle, Pin, Megaphone, Calendar, ReceiptIndianRupee, CalendarClock, MapPinned, Handshake, LayoutGrid, Zap, Plane, Activity } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Avatar2D } from "@/components/common/Avatar2D";
 import { StatCard } from "@/components/common/StatCard";
@@ -106,7 +107,6 @@ function AdminPage() {
       p_role: updates.role || user.role,
       p_dept: updates.dept || user.dept || "",
       p_password: updates.password || user.password || "",
-      p_face: updates.face_registered ?? user.face_registered ?? false,
       p_branch_id: updates.branch_id === undefined ? user.branch_id : updates.branch_id,
       p_dob: newDob,
       p_joining_date: newJoiningDate,
@@ -272,11 +272,37 @@ function AdminPage() {
         <StatCard label="Admins" value={users.filter((u) => u.role === "Admin").length} icon={Shield} tone="warning" />
       </div>
 
+      {/* NEW Quick Action Hub */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <QuickActionCard 
+          to="/payroll" 
+          title="Run Payroll" 
+          desc="Calculate salaries, fines & generating payslips." 
+          icon={ReceiptIndianRupee} 
+          tone="bg-success/20 text-success" 
+        />
+        <QuickActionCard 
+          to="/shifts" 
+          title="Shift Roster" 
+          desc="Manage employee work hours and weekly schedules." 
+          icon={CalendarClock} 
+          tone="bg-primary/20 text-primary" 
+        />
+        <QuickActionCard 
+          to="/leaves" 
+          title="Leave Center" 
+          desc="Review approvals and configure leave categories." 
+          icon={Plane} 
+          tone="bg-info/20 text-info" 
+        />
+      </div>
+
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="mb-4 h-auto w-full bg-muted/40 backdrop-blur-sm rounded-2xl border border-border/50 p-1">
           <div className="flex w-full overflow-x-auto no-scrollbar gap-1 p-0.5">
             <TabsTrigger value="users" className="gap-2 shrink-0"><Users className="h-4 w-4" /> Users</TabsTrigger>
             <TabsTrigger value="branches" className="gap-2 shrink-0"><Building2 className="h-4 w-4" /> Branches</TabsTrigger>
+            <TabsTrigger value="enterprise" className="gap-2 shrink-0 font-bold text-primary"><Zap className="h-4 w-4" /> Enterprise Tools</TabsTrigger>
             <TabsTrigger value="holidays" className="gap-2 shrink-0"><PartyPopper className="h-4 w-4" /> Holidays</TabsTrigger>
             <TabsTrigger value="announcements" className="gap-2 shrink-0"><Plus className="h-4 w-4" /> Announcements</TabsTrigger>
             <TabsTrigger value="settings" className="gap-2 shrink-0"><SettingsIcon className="h-4 w-4" /> Settings</TabsTrigger>
@@ -531,6 +557,53 @@ function AdminPage() {
            <HolidayManager branches={branches} />
         </TabsContent>
 
+        <TabsContent value="enterprise">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+             <EnterpriseLinkCard 
+               to="/payroll" 
+               title="Payroll Engine" 
+               desc="One-click payroll generation for all branches."
+               icon={ReceiptIndianRupee}
+               count="Live"
+             />
+             <EnterpriseLinkCard 
+               to="/shifts" 
+               title="Shift Manager" 
+               desc="Configure rotational and fixed timing patterns."
+               icon={CalendarClock}
+               count={branches.length}
+             />
+             <EnterpriseLinkCard 
+               to="/field-tracking" 
+               title="Field Monitor" 
+               desc="Real-time GPS tracking for field staff."
+               icon={MapPinned}
+               count="Active"
+             />
+             <EnterpriseLinkCard 
+               to="/leaves" 
+               title="Leave Approvals" 
+               desc="Approve/Reject pending employee leave requests."
+               icon={Plane}
+               count="Manage"
+             />
+             <EnterpriseLinkCard 
+               to="/comp-offs" 
+               title="Comp-Off Requests" 
+               desc="Manage compensatory off applications."
+               icon={Handshake}
+               count="Manage"
+             />
+             <EnterpriseLinkCard 
+               to="/leaves" 
+               title="Leave Categories" 
+               desc="Configure Sick, Annual, and Casual policies."
+               icon={LayoutGrid}
+               count="Policy"
+             />
+          </div>
+        </TabsContent>
+
         <TabsContent value="announcements">
            <AnnouncementManager />
         </TabsContent>
@@ -546,6 +619,8 @@ function AdminPage() {
               </div>
               <div className="space-y-4">
                 <div className="space-y-2"><Label>Late Threshold (Minutes)</Label><Input type="number" value={tempSettings?.late_threshold_mins} onChange={e => setTempSettings(s => s ? {...s, late_threshold_mins: parseInt(e.target.value)} : null)} /></div>
+                <div className="space-y-2"><Label>Late Fine Amount ({tempSettings?.default_currency})</Label><Input type="number" value={tempSettings?.late_fine_amount} onChange={e => setTempSettings(s => s ? {...s, late_fine_amount: parseFloat(e.target.value) || 0} : null)} /></div>
+                <div className="space-y-2"><Label>Overtime Rate (per hour)</Label><Input type="number" value={tempSettings?.overtime_rate} onChange={e => setTempSettings(s => s ? {...s, overtime_rate: parseFloat(e.target.value) || 0} : null)} /></div>
                 <div className="space-y-2"><Label>Working Hours per Day</Label><Input type="number" step="0.5" value={tempSettings?.working_hours_per_day} onChange={e => setTempSettings(s => s ? {...s, working_hours_per_day: parseFloat(e.target.value)} : null)} /></div>
                 <div className="space-y-2">
                   <Label>Weekend Configuration</Label>
@@ -694,3 +769,44 @@ function AnnouncementManager() {
   );
 }
 
+function QuickActionCard({ to, title, desc, icon: Icon, tone }: { to: string; title: string; desc: string; icon: any; tone: string }) {
+  return (
+    <Link to={to} className="group relative overflow-hidden rounded-[2rem] border bg-[#0a0a0a] p-6 transition-all hover:border-primary/50 hover:shadow-elegant">
+      <div className="relative z-10 flex flex-col gap-4">
+        <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl", tone)}>
+          <Icon className="h-6 w-6" />
+        </div>
+        <div>
+          <h3 className="text-lg font-black italic uppercase tracking-tighter text-white">{title}</h3>
+          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{desc}</p>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0">
+          Initialize System <Plus className="h-3 w-3" />
+        </div>
+      </div>
+      <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
+        <Icon className="h-32 w-32" />
+      </div>
+    </Link>
+  );
+}
+
+function EnterpriseLinkCard({ to, title, desc, icon: Icon, count }: { to: string; title: string; desc: string; icon: any; count: string | number }) {
+  return (
+    <Link to={to} className="group flex flex-col justify-between rounded-3xl border bg-card p-6 shadow-card transition-all hover:border-primary/50 hover:shadow-elegant hover:-translate-y-1">
+      <div className="flex items-start justify-between">
+        <div className="rounded-2xl bg-primary/5 p-3 text-primary border border-primary/10">
+          <Icon className="h-6 w-6" />
+        </div>
+        <div className="rounded-full bg-muted px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{count}</div>
+      </div>
+      <div className="mt-6">
+        <h3 className="text-lg font-bold">{title}</h3>
+        <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{desc}</p>
+      </div>
+      <div className="mt-6 flex items-center gap-2 text-[11px] font-bold text-primary group-hover:gap-3 transition-all">
+        Launch Console <Plus className="h-3.5 w-3.5" />
+      </div>
+    </Link>
+  );
+}

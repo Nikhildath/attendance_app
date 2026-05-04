@@ -9,6 +9,9 @@ export type OrganisationSettings = {
   late_threshold_mins: number;
   working_hours_per_day: number;
   fiscal_year_start: string;
+  late_fine_amount: number;
+  overtime_rate: number;
+  weekend_type?: string;
 };
 
 type SettingsCtx = {

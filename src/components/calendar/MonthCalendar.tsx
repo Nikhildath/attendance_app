@@ -88,8 +88,8 @@ export function MonthCalendar({
         .from("attendance")
         .select("*")
         .eq("user_id", targetId)
-        .gte("created_at", start)
-        .lt("created_at", end);
+        .gte("check_in", start)
+        .lt("check_in", end);
 
       const { data: shifts }   = await supabase.from("shifts").select("*");
       const { data: userSched } = await supabase
@@ -143,14 +143,19 @@ export function MonthCalendar({
       // 3. Overwrite with actual Attendance records
       if (data) {
         data.forEach((rec) => {
-          const dateStr = rec.check_in || rec.created_at;
-          const d = new Date(dateStr).getDate();
           const rawStatus = (rec.status || "present").toLowerCase();
-          map[d] = {
-            status: rawStatus as AttendanceStatus,
-            checkIn:  rec.check_in  ? new Date(rec.check_in).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : undefined,
-            checkOut: rec.check_out ? new Date(rec.check_out).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : undefined,
-            note: rec.notes,
+          // Normalize to AttendanceStatus type
+          const status = (rawStatus === "present" || rawStatus === "absent" || rawStatus === "late" || rawStatus === "leave") 
+            ? rawStatus as AttendanceStatus 
+            : "present";
+
+          const recDate = new Date((rec as any).check_in || (rec as any).created_at);
+          const day = recDate.getDate();
+          map[day] = {
+            status,
+            checkIn:  (rec as any).check_in  ? new Date((rec as any).check_in).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : undefined,
+            checkOut: (rec as any).check_out ? new Date((rec as any).check_out).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : undefined,
+            note: (rec as any).notes,
           };
         });
       }

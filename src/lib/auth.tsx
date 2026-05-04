@@ -9,15 +9,13 @@ export type Profile = {
   name: string;
   role: ProfileRole;
   dept?: string;
-  face_registered?: boolean;
-  face_descriptor?: number[];
   password?: string;
   branch_id?: string | null;
   dob?: string | null;
   joining_date?: string | null;
   avatar_url?: string | null;
-  biometric_registered?: boolean;
-  biometric_credential_id?: string | null;
+  passkey_registered?: boolean;
+  passkey_credential_id?: string | null;
 };
 
 type AuthContextValue = {
@@ -41,7 +39,7 @@ const SESSION_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 async function fetchProfileById(userId: string) {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id,email,name,role,dept,face_registered,face_descriptor,branch_id,dob,joining_date,avatar_url,biometric_registered,biometric_credential_id")
+    .select("id,email,name,role,dept,branch_id,dob,joining_date,avatar_url,passkey_registered,passkey_credential_id")
     .eq("id", userId)
     .single();
 
@@ -63,9 +61,8 @@ async function fetchProfile(user: User | null) {
         email: user.email,
         name,
         role: "Employee",
-        face_registered: false,
       })
-      .select("id,email,name,role,dept,face_registered,face_descriptor,branch_id,dob,joining_date,avatar_url,biometric_registered,biometric_credential_id")
+      .select("id,email,name,role,dept,branch_id,dob,joining_date,avatar_url,passkey_registered,passkey_credential_id")
       .single();
     
     if (insertError) {
