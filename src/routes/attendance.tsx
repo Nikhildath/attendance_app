@@ -332,22 +332,22 @@ function AttendancePage() {
   const isPunchedIn = attendance && !attendance.check_out;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8 md:space-y-10">
       <PageHeader
         title="Attendance"
         subtitle="Secure neural verification and spatio-temporal synchronization"
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-10">
-        <div className="flex flex-col gap-10">
-          <div className="relative p-10 rounded-[4rem] bg-white/[0.01] border border-white/[0.05] backdrop-blur-3xl shadow-2xl overflow-hidden group">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-10">
+        <div className="flex min-w-0 flex-col gap-8 lg:gap-10">
+          <div className="group relative overflow-hidden rounded-[2.75rem] border border-white/[0.05] bg-white/[0.01] p-5 shadow-2xl backdrop-blur-3xl md:rounded-[4rem] md:p-10">
             <div className="absolute inset-0 opacity-10 pointer-events-none">
                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]" />
             </div>
             
-            <div className="relative z-10 flex flex-col items-center gap-12 text-center">
+            <div className="relative z-10 flex flex-col items-center gap-8 text-center md:gap-12">
               <div className="space-y-3">
-                 <h2 className="text-3xl font-black italic uppercase tracking-tighter">Neural Verification</h2>
+                 <h2 className="text-2xl font-black italic uppercase tracking-tighter md:text-3xl">Neural Verification</h2>
                  {profile?.passkey_registered && (
                     <div className="flex items-center justify-center gap-2 text-primary">
                        <ShieldCheck className="w-3 h-3" />
@@ -356,7 +356,7 @@ function AttendancePage() {
                  )}
               </div>
 
-              <div className="flex flex-col items-center gap-10">
+              <div className="flex flex-col items-center gap-8 md:gap-10">
                 <div className="relative flex items-center justify-center">
                     {/* HYPER-ANIMATED Background (Like Nav Bar) */}
                     
@@ -390,7 +390,7 @@ function AttendancePage() {
                       disabled={loading || !!attendance?.check_out}
                       className={cn(
                         "group relative flex flex-col items-center justify-center gap-2 rounded-full transition-all duration-500",
-                        "w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 border-4 z-10",
+                        "z-10 h-44 w-44 border-4 sm:h-56 sm:w-56 md:h-80 md:w-80",
                         isPunchedIn ? "bg-secondary/10 border-secondary shadow-[0_0_50px_rgba(var(--secondary-rgb),0.2)]" : "bg-[#0a0a0a] border-primary/60 shadow-[0_0_80px_rgba(var(--primary-rgb),0.5)] group-active:scale-95 hover:border-primary"
                       )}
                     >
@@ -398,8 +398,8 @@ function AttendancePage() {
                       <div className="absolute inset-4 rounded-full border border-white/5 animate-spin-slow pointer-events-none" />
                       
                       {/* Particle Dots */}
-                      <div className="absolute top-8 right-12 w-2 h-2 rounded-full bg-primary shadow-glow animate-ping" />
-                      <div className="absolute bottom-10 left-10 w-2 h-2 rounded-full bg-secondary shadow-glow animate-pulse" />
+                      <div className="absolute top-7 right-9 h-2 w-2 rounded-full bg-primary shadow-glow animate-ping sm:right-12 sm:top-8" />
+                      <div className="absolute bottom-9 left-8 h-2 w-2 rounded-full bg-secondary shadow-glow animate-pulse sm:bottom-10 sm:left-10" />
                       <div className="absolute inset-2 rounded-full border border-white/5 animate-spin-slow" />
                       <AnimatePresence mode="wait">
                         <motion.div
@@ -408,8 +408,8 @@ function AttendancePage() {
                           animate={{ scale: 1, opacity: 1 }}
                           className="flex flex-col items-center"
                         >
-                          {isPunchedIn ? <ZapOff className="w-16 h-16 sm:w-20 sm:h-20 text-secondary mb-2 transition-transform duration-500 group-hover:scale-110" /> : <Fingerprint className="w-20 h-20 sm:w-24 sm:h-24 text-primary mb-2 animate-pulse transition-transform duration-500 group-hover:scale-110 drop-shadow-[0_0_15px_var(--color-primary)]" />}
-                          <span className="text-lg sm:text-xl font-black uppercase tracking-[0.2em]">{isPunchedIn ? "Check Out" : "Punch In"}</span>
+                          {isPunchedIn ? <ZapOff className="mb-2 h-14 w-14 text-secondary transition-transform duration-500 group-hover:scale-110 sm:h-20 sm:w-20" /> : <Fingerprint className="mb-2 h-16 w-16 animate-pulse text-primary drop-shadow-[0_0_15px_var(--color-primary)] transition-transform duration-500 group-hover:scale-110 sm:h-24 sm:w-24" />}
+                          <span className="text-base font-black uppercase tracking-[0.16em] sm:text-xl sm:tracking-[0.2em]">{isPunchedIn ? "Check Out" : "Punch In"}</span>
                         </motion.div>
                       </AnimatePresence>
                     </button>
@@ -423,7 +423,7 @@ function AttendancePage() {
                           exit={{ opacity: 0 }}
                           className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md rounded-full"
                         >
-                          <div className="relative w-48 h-48">
+                          <div className="relative h-40 w-40 sm:h-48 sm:w-48">
                              <div className="absolute inset-0 border-2 border-primary/20 rounded-full" />
                              <motion.div 
                                animate={{ rotate: 360 }}
@@ -431,7 +431,7 @@ function AttendancePage() {
                                className="absolute inset-0 border-t-2 border-primary rounded-full"
                              />
                              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <Fingerprint className="w-16 h-16 text-primary animate-pulse" />
+                                <Fingerprint className="h-14 w-14 animate-pulse text-primary sm:h-16 sm:w-16" />
                                 <span className="mt-4 text-[10px] font-black uppercase tracking-[0.3em] text-primary">{scanProgress}%</span>
                              </div>
                           </div>
@@ -462,12 +462,12 @@ function AttendancePage() {
                 )}
               </div>
 
-              <div className="flex gap-10">
-                 <div className="flex flex-col gap-1 items-center">
+              <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+                 <div className="flex flex-col items-center gap-1">
                     <MapPin className="w-4 h-4 text-primary" />
                     <span className="text-[9px] font-black uppercase tracking-widest text-white/30">{branch?.name || "Global Hub"}</span>
                  </div>
-                 <div className="flex flex-col gap-1 items-center">
+                 <div className="flex flex-col items-center gap-1">
                     <Radar className="w-4 h-4 text-secondary" />
                     <span className="text-[9px] font-black uppercase tracking-widest text-white/30">{location ? "Spatial Verified" : "Offline"}</span>
                  </div>
@@ -476,9 +476,9 @@ function AttendancePage() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-10">
-           <div className="p-10 rounded-[3rem] bg-[#0a0a0a] border border-white/[0.05] shadow-2xl flex flex-col gap-8 flex-1">
-              <div className="flex items-center justify-between">
+        <div className="flex min-w-0 flex-col gap-8 lg:gap-10">
+           <div className="flex flex-1 flex-col gap-6 rounded-[2.5rem] border border-white/[0.05] bg-[#0a0a0a] p-5 shadow-2xl md:gap-8 md:rounded-[3rem] md:p-10">
+              <div className="flex items-center justify-between gap-4">
                  <h2 className="text-xl font-black italic uppercase tracking-tighter flex items-center gap-3">
                     <HistoryIcon className="w-5 h-5 text-primary" /> Data History
                  </h2>
@@ -492,12 +492,12 @@ function AttendancePage() {
                        <p className="text-[10px] font-black uppercase tracking-[0.4em]">No Temporal Data</p>
                     </div>
                  ) : history.map((item) => (
-                    <div key={item.id} className="p-5 rounded-3xl bg-white/[0.02] border border-white/[0.03] flex items-center justify-between group hover:bg-white/[0.04] transition-all">
-                       <div className="flex items-center gap-5">
+                    <div key={item.id} className="group flex flex-col gap-4 rounded-[1.5rem] border border-white/[0.03] bg-white/[0.02] p-4 transition-all hover:bg-white/[0.04] sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                       <div className="flex min-w-0 items-center gap-4 sm:gap-5">
                           <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
                              <Clock className="w-5 h-5" />
                           </div>
-                          <div>
+                          <div className="min-w-0">
                              <p className="text-[11px] font-black uppercase text-white tracking-tight">{new Date(item.check_in).toLocaleDateString()}</p>
                              <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-1">
                                 {new Date(item.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 

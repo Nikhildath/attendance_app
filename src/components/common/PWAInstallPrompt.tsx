@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -23,7 +24,9 @@ export function PWAInstallPrompt() {
     window.addEventListener("beforeinstallprompt", handler);
 
     // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    const standalone = window.matchMedia("(display-mode: standalone)").matches;
+    setIsStandalone(standalone);
+    if (standalone) {
       setShowPrompt(false);
       const sidebarBtn = document.getElementById("pwa-install-button-container");
       if (sidebarBtn) sidebarBtn.classList.add("hidden");
@@ -54,37 +57,39 @@ export function PWAInstallPrompt() {
     if (sidebarBtn) sidebarBtn.classList.add("hidden");
   };
 
-  if (!showPrompt) return null;
+  if (!showPrompt || isStandalone) return null;
 
   return (
     <div className={cn(
-      "fixed bottom-24 left-4 right-4 z-[100] md:bottom-8 md:left-auto md:right-8 md:w-80 animate-in slide-in-from-bottom-10 fade-in duration-500"
+      "animate-in slide-in-from-bottom-10 fade-in duration-500 fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[100] md:bottom-8 md:left-auto md:right-8 md:w-80"
     )}>
-      <div className="relative overflow-hidden rounded-2xl bg-primary p-4 shadow-2xl shadow-primary/40 border border-white/20">
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(145deg,rgba(14,165,233,0.96),rgba(37,99,235,0.92))] p-4 text-white shadow-2xl shadow-primary/30 backdrop-blur-xl">
         {/* Background Glow */}
-        <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/15 blur-2xl" />
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.12))]" />
         
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/18 backdrop-blur-sm ring-1 ring-white/20">
             <Download className="h-6 w-6 text-white" />
           </div>
           
           <div className="flex-1">
-            <h3 className="font-bold text-white leading-tight">Install Attendly Pro</h3>
-            <p className="mt-1 text-xs text-white/80 line-clamp-2">
-              Add to your home screen for the best experience and real-time tracking.
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/70">PWA Ready</p>
+            <h3 className="mt-1 font-black leading-tight">Install Attendly Pro</h3>
+            <p className="mt-1 text-xs text-white/85 line-clamp-2">
+              Add it to your home screen for a faster full-screen experience with app-style navigation.
             </p>
             
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 onClick={handleInstall}
-                className="rounded-lg bg-white px-4 py-1.5 text-xs font-bold text-primary hover:bg-white/90 active:scale-95 transition-all"
+                className="rounded-xl bg-white px-4 py-2 text-xs font-black text-primary shadow-lg transition-all hover:bg-white/95 active:scale-95"
               >
-                Install Now
+                Install App
               </button>
               <button
                 onClick={() => setShowPrompt(false)}
-                className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/20"
+                className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition-all hover:bg-white/20"
               >
                 Maybe Later
               </button>

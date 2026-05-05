@@ -153,12 +153,26 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+    min-width: 0;
+  }
+  html {
+    overflow-x: clip;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     padding-bottom: env(safe-area-inset-bottom);
+    overflow-x: clip;
+  }
+  body,
+  #root {
+    max-width: 100%;
+  }
+  img, svg, video, canvas {
+    max-width: 100%;
   }
   ::selection { background: color-mix(in oklab, var(--primary) 30%, transparent); }
 }

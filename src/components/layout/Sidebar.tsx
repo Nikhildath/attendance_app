@@ -36,14 +36,14 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-30 flex flex-col border-r border-white/[0.03] bg-[#050505] text-white transition-[width] duration-500 shadow-[20px_0_40px_-20px_rgba(0,0,0,1)]",
+        "fixed inset-y-0 left-0 z-30 flex flex-col border-r border-border/70 bg-card/92 text-foreground transition-[width] duration-500 shadow-[20px_0_40px_-20px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/[0.03] dark:bg-[#050505] dark:text-white dark:shadow-[20px_0_40px_-20px_rgba(0,0,0,1)]",
         collapsed ? "w-[72px]" : "w-64"
       )}
     >
       {/* Noise Texture Overlay */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
-      <div className="flex h-20 items-center gap-3 border-b border-white/[0.03] px-5 overflow-hidden">
+      <div className="flex h-20 items-center gap-3 overflow-hidden border-b border-border/60 px-5 dark:border-white/[0.03]">
         <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] group transition-transform hover:scale-105">
            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent animate-pulse" />
            <Sparkles className="h-5 w-5 relative z-10" />
@@ -54,16 +54,16 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col leading-tight"
           >
-            <span className="text-lg font-black tracking-tight text-white uppercase italic">
+            <span className="text-lg font-black tracking-tight text-foreground uppercase italic dark:text-white">
               Attendly<span className="text-primary">Pro</span>
             </span>
-            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/30">Enterprise v4.5</span>
+            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Enterprise v4.5</span>
           </motion.div>
         )}
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-4 scrollbar-none relative z-10">
-        {!collapsed && <div className="px-3 pb-2 pt-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700/50">Core</div>}
+        {!collapsed && <div className="px-3 pb-2 pt-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/70">Core</div>}
         {nav.map((item) => {
           const active = isActive(item.to);
           const Icon = item.icon;
@@ -74,14 +74,14 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
               className={cn(
                 "group relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold transition-all duration-300",
                 active
-                  ? "bg-white/[0.03] text-primary border border-white/[0.05] shadow-[0_4px_20px_-5px_rgba(0,0,0,0.5)]"
-                  : "text-zinc-500 hover:bg-white/[0.02] hover:text-white"
+                  ? "border border-primary/15 bg-primary/8 text-primary shadow-[0_10px_30px_-12px_rgba(var(--primary-rgb),0.28)] dark:border-white/[0.05] dark:bg-white/[0.03] dark:shadow-[0_4px_20px_-5px_rgba(0,0,0,0.5)]"
+                  : "text-muted-foreground hover:bg-accent/70 hover:text-foreground dark:hover:bg-white/[0.02] dark:hover:text-white"
               )}
               title={collapsed ? item.label : undefined}
             >
               <div className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-lg transition-all",
-                active ? "bg-primary text-primary-foreground shadow-glow" : "bg-white/5 text-zinc-500 group-hover:text-primary group-hover:bg-primary/10"
+                active ? "bg-primary text-primary-foreground shadow-glow" : "bg-muted/80 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary dark:bg-white/5"
               )}>
                 <Icon className="h-[18px] w-[18px] shrink-0" />
               </div>
@@ -95,7 +95,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
           );
         })}
 
-        {!collapsed && <div className="px-3 pb-2 pt-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700/50">Management</div>}
+        {!collapsed && <div className="px-3 pb-2 pt-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/70">Management</div>}
         {roleNav.filter((item) => item.roles.includes(profile?.role || "Employee")).map((item) => {
           const active = isActive(item.to);
           const Icon = item.icon;
@@ -106,14 +106,14 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
               className={cn(
                 "group relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold transition-all duration-300",
                 active 
-                  ? "bg-white/[0.03] text-secondary border border-white/[0.05] shadow-[0_4px_20px_-5px_rgba(0,0,0,0.5)]" 
-                  : "text-zinc-500 hover:bg-white/[0.02] hover:text-white"
+                  ? "border border-secondary/15 bg-secondary/10 text-secondary shadow-[0_10px_30px_-12px_rgba(234,88,12,0.22)] dark:border-white/[0.05] dark:bg-white/[0.03] dark:shadow-[0_4px_20px_-5px_rgba(0,0,0,0.5)]" 
+                  : "text-muted-foreground hover:bg-accent/70 hover:text-foreground dark:hover:bg-white/[0.02] dark:hover:text-white"
               )}
               title={collapsed ? item.label : undefined}
             >
               <div className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-lg transition-all",
-                active ? "bg-secondary text-secondary-foreground shadow-glow" : "bg-white/5 text-zinc-500 group-hover:text-secondary group-hover:bg-secondary/10"
+                active ? "bg-secondary text-secondary-foreground shadow-glow" : "bg-muted/80 text-muted-foreground group-hover:bg-secondary/10 group-hover:text-secondary dark:bg-white/5"
               )}>
                 <Icon className="h-[18px] w-[18px] shrink-0" />
               </div>
@@ -123,9 +123,9 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
         })}
       </nav>
 
-      <div className="mt-auto p-4 border-t border-white/[0.03] bg-black/20">
+      <div className="mt-auto border-t border-border/60 bg-background/55 p-4 dark:border-white/[0.03] dark:bg-black/20">
          <div className={cn(
-           "flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.03]",
+           "flex items-center gap-3 rounded-2xl border border-border/60 bg-background/80 p-3 dark:border-white/[0.03] dark:bg-white/[0.02]",
            collapsed && "justify-center px-0"
          )}>
             <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
@@ -133,17 +133,17 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
             </div>
             {!collapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-wider text-white truncate">{profile?.name}</span>
-                <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest truncate">{profile?.role}</span>
+                <span className="truncate text-[10px] font-black uppercase tracking-wider text-foreground dark:text-white">{profile?.name}</span>
+                <span className="truncate text-[8px] font-bold uppercase tracking-widest text-muted-foreground">{profile?.role}</span>
               </div>
             )}
          </div>
       </div>
 
-      <div className="p-4 bg-black/40">
+      <div className="bg-background/70 p-4 dark:bg-black/40">
         <button
           onClick={onToggle}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/5 bg-white/5 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-zinc-600 transition-all hover:bg-white/10 hover:text-white hover:border-primary/20 active:scale-95"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-border/70 bg-muted/50 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground transition-all hover:border-primary/20 hover:bg-accent hover:text-foreground active:scale-95 dark:border-white/5 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:text-white"
         >
           <ChevronLeft className={cn("h-4 w-4 transition-transform duration-500", collapsed && "rotate-180")} />
           {!collapsed && <span>{isMobile ? "Close" : "Minimize"}</span>}

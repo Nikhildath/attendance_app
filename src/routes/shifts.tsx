@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/shifts")({
   head: () => ({
@@ -22,6 +23,7 @@ const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function ShiftsPage() {
   const { isAdmin, isManager } = useAuth();
+  const isMobile = useIsMobile();
   const [filter, setFilter] = useState<"all" | "fixed" | "rotational" | "open">("all");
   const [shifts, setShifts] = useState<any[]>([]);
   const [schedule, setSchedule] = useState<any[]>([]);
@@ -88,26 +90,27 @@ function ShiftsPage() {
   };
 
   const visibleShifts = shifts.filter((s) => filter === "all" || s.type === filter);
+  const getShiftById = (shiftId?: string | null) => (shiftId ? shifts.find((s) => s.id === shiftId) : null);
 
   return (
-    <div>
+    <div className="space-y-6 md:space-y-8">
       <PageHeader
         title="Shift Management"
         subtitle="Manage work shifts and dynamic weekly rosters"
         actions={canManage && (
           <button 
             onClick={() => setShiftModal({ open: true })}
-            className="inline-flex items-center gap-2 rounded-xl gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant transition-transform hover:scale-[1.02]"
+            className="inline-flex items-center gap-2 rounded-2xl gradient-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-elegant transition-transform hover:scale-[1.02]"
           >
             <Plus className="h-4 w-4" /> New Shift
           </button>
         )}
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar md:flex-wrap">
         {(["all","fixed","rotational","open"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)} className={cn(
-            "rounded-full border px-4 py-1.5 text-xs font-semibold capitalize transition-all",
+            "shrink-0 rounded-full border px-4 py-2 text-xs font-semibold capitalize transition-all",
             filter === f ? "border-primary bg-primary text-primary-foreground shadow-sm" : "bg-card hover:bg-accent text-muted-foreground"
           )}>{f}</button>
         ))}
@@ -119,7 +122,7 @@ function ShiftsPage() {
         ) : visibleShifts.length === 0 ? (
           <div className="col-span-full py-10 text-center text-muted-foreground border rounded-xl bg-card/50 border-dashed">No shifts found. Create one to get started.</div>
         ) : visibleShifts.map((s) => (
-          <div key={s.id} className="group relative rounded-xl border bg-card p-5 shadow-card transition-all hover:border-primary/50 hover:shadow-elegant">
+          <div key={s.id} className="group relative rounded-[1.75rem] border bg-card/90 p-5 shadow-card transition-all hover:border-primary/50 hover:shadow-elegant">
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{s.type}</div>
@@ -140,7 +143,7 @@ function ShiftsPage() {
               <span className="text-muted-foreground/30 font-light">→</span>
               <span>{s.end_time}</span>
             </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground font-medium">
+            <div className="mt-3 flex flex-col gap-2 text-[11px] font-medium text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
               <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Break: {s.break_minutes} min</span>
               <span className="opacity-0 group-hover:opacity-100 transition-opacity">Shift ID: {s.id.split('-')[0]}</span>
             </div>
@@ -148,15 +151,76 @@ function ShiftsPage() {
         ))}
       </div>
 
-      <div className="mt-8 overflow-hidden rounded-xl border bg-card shadow-card">
+      <div className="overflow-hidden rounded-[1.75rem] border bg-card/90 shadow-card">
         <div className="flex items-center justify-between border-b p-5">
           <div>
             <h2 className="text-lg font-semibold">Weekly Schedule</h2>
-            <p className="text-xs text-muted-foreground">Click on cells to assign shifts to employees</p>
+            <p className="text-xs text-muted-foreground">
+              {isMobile ? "Tap a day to assign or update an employee shift." : "Click on cells to assign shifts to employees"}
+            </p>
           </div>
           <CalendarRange className="h-5 w-5 text-muted-foreground opacity-50" />
         </div>
-        <div className="overflow-x-auto">
+
+        {isMobile ? (
+          <div className="space-y-4 p-4">
+            {loading ? (
+              <div className="py-16 text-center text-xs text-muted-foreground">Loading roster...</div>
+            ) : members.length === 0 ? (
+              <div className="rounded-2xl border border-dashed bg-card/60 p-8 text-center text-sm text-muted-foreground">No employees found.</div>
+            ) : (
+              members.map((m) => {
+                const sched = schedule.find((s) => s.user_id === m.id);
+                return (
+                  <div key={m.id} className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4 shadow-sm">
+                    <div className="mb-4 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-black uppercase tracking-tight text-foreground">{m.name}</div>
+                        <div className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{m.role} • {m.dept || "No Dept"}</div>
+                      </div>
+                      <div className="rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
+                        Roster
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {DAYS.map((d, i) => {
+                        const shiftId = sched?.[d];
+                        const sh = getShiftById(shiftId);
+                        return (
+                          <button
+                            key={d}
+                            onClick={() => canManage && setAssignModal({ open: true, user: m, day: d, currentShiftId: shiftId })}
+                            disabled={!canManage}
+                            className={cn(
+                              "flex min-h-[88px] flex-col items-start justify-between rounded-[1.25rem] border p-3 text-left transition-all active:scale-[0.98]",
+                              sh
+                                ? `${sh.color} shadow-sm`
+                                : "border-dashed border-border bg-muted/25 hover:border-primary/30 hover:bg-muted/45"
+                            )}
+                          >
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{DAY_LABELS[i]}</span>
+                            {sh ? (
+                              <div className="w-full">
+                                <div className="truncate text-[11px] font-black uppercase">{sh.name}</div>
+                                <div className="mt-1 text-[10px] font-bold opacity-75 tabular-nums">
+                                  {sh.start_time === "—" ? "Flexi Shift" : `${sh.start_time} - ${sh.end_time}`}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Off Day</div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               <tr>
@@ -179,7 +243,7 @@ function ShiftsPage() {
                     </td>
                     {DAYS.map((d, i) => {
                       const shiftId = sched?.[d];
-                      const sh = shiftId ? shifts.find((s) => s.id === shiftId) : null;
+                      const sh = getShiftById(shiftId);
                       return (
                         <td key={i} className="px-2 py-4">
                           <button
@@ -210,6 +274,7 @@ function ShiftsPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {shiftModal.open && (
@@ -254,7 +319,7 @@ function ShiftModal({ shift, onClose, onSave }: { shift?: any; onClose: () => vo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl animate-in zoom-in duration-200">
+      <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-[1.75rem] border bg-card p-5 shadow-2xl animate-in zoom-in duration-200 md:p-6">
         <div className="flex items-center justify-between border-b pb-4">
           <h2 className="text-xl font-bold">{shift ? "Edit Shift" : "Create New Shift"}</h2>
           <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent transition-colors"><X className="h-5 w-5" /></button>
@@ -334,9 +399,9 @@ function ShiftModal({ shift, onClose, onSave }: { shift?: any; onClose: () => vo
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={onClose} className="rounded-xl border px-6 py-2.5 text-sm font-bold hover:bg-accent transition-colors">Cancel</button>
-            <button type="submit" className="rounded-xl gradient-primary px-8 py-2.5 text-sm font-bold text-primary-foreground shadow-elegant hover:scale-[1.02] transition-transform">Save Shift</button>
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end">
+            <button type="button" onClick={onClose} className="rounded-xl border px-6 py-3 text-sm font-bold hover:bg-accent transition-colors">Cancel</button>
+            <button type="submit" className="rounded-xl gradient-primary px-8 py-3 text-sm font-bold text-primary-foreground shadow-elegant hover:scale-[1.02] transition-transform">Save Shift</button>
           </div>
         </form>
       </div>
@@ -347,7 +412,7 @@ function ShiftModal({ shift, onClose, onSave }: { shift?: any; onClose: () => vo
 function AssignModal({ user, day, shifts, currentShiftId, onClose, onAssign }: { user: any; day: string; shifts: any[]; currentShiftId?: string; onClose: () => void; onAssign: (id: string | null) => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-2xl animate-in zoom-in duration-200">
+      <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-[1.75rem] border bg-card p-5 shadow-2xl animate-in zoom-in duration-200 md:p-6">
         <div className="flex items-center justify-between border-b pb-4">
           <div>
             <h2 className="text-xl font-bold">Assign Shift</h2>
@@ -360,7 +425,7 @@ function AssignModal({ user, day, shifts, currentShiftId, onClose, onAssign }: {
           <button
             onClick={() => onAssign(null)}
             className={cn(
-              "flex w-full items-center justify-between rounded-xl border p-4 text-sm font-bold transition-all hover:bg-accent",
+              "flex w-full items-center justify-between rounded-[1.25rem] border p-4 text-sm font-bold transition-all hover:bg-accent",
               !currentShiftId ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-dashed"
             )}
           >
@@ -373,13 +438,13 @@ function AssignModal({ user, day, shifts, currentShiftId, onClose, onAssign }: {
             <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-card px-2">Available Shifts</div>
           </div>
 
-          <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-1">
+          <div className="grid max-h-[320px] gap-2 overflow-y-auto pr-1">
             {shifts.map(s => (
               <button
                 key={s.id}
                 onClick={() => onAssign(s.id)}
                 className={cn(
-                  "flex w-full items-center justify-between rounded-xl border p-4 text-sm font-bold transition-all text-left",
+                  "flex w-full items-center justify-between rounded-[1.25rem] border p-4 text-left text-sm font-bold transition-all",
                   s.color,
                   currentShiftId === s.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-[0.98]" : "hover:scale-[1.02]"
                 )}

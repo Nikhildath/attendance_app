@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { SettingsProvider } from "@/lib/settings-context";
 import { LiveTracker } from "@/components/common/LiveTracker";
+import { PWAInstallPrompt } from "@/components/common/PWAInstallPrompt";
 
 function NotFoundComponent() {
   return (
@@ -28,7 +29,8 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#eaf3fb" },
       { title: "Attendly — Workforce Attendance Platform" },
       { name: "description", content: "Modern attendance management with calendar, leaves, reports and team views." },
     ],
@@ -88,6 +90,7 @@ function RootContent() {
   return (
     <>
       {hideShell ? <Outlet /> : <AppShell><Outlet /></AppShell>}
+      {!hideShell && <PWAInstallPrompt />}
     </>
   );
 }

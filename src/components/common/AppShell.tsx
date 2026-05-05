@@ -18,14 +18,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen bg-[#020202] text-white selection:bg-primary selection:text-primary-foreground font-sans antialiased overflow-x-hidden">
+    <div className="flex min-h-screen overflow-x-clip bg-background text-foreground selection:bg-primary selection:text-primary-foreground font-sans antialiased">
       {/* Global Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)]" />
-         <div className="absolute inset-0 opacity-[0.02] mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-         <div className="absolute top-[10%] left-[20%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] animate-pulse" />
-         <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] bg-secondary/5 rounded-full blur-[120px]" />
-         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:100px_100px]" />
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.88)_0%,rgba(235,244,255,0.94)_42%,rgba(223,232,243,0.98)_100%)] dark:bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)]" />
+         <div className="absolute inset-0 opacity-[0.03] mix-blend-soft-light dark:opacity-[0.02] dark:mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+         <div className="absolute top-[10%] left-[20%] h-[320px] w-[320px] rounded-full bg-primary/10 blur-[120px] animate-pulse dark:bg-primary/5 md:h-[500px] md:w-[500px] md:blur-[150px]" />
+         <div className="absolute bottom-[10%] right-[20%] h-[260px] w-[260px] rounded-full bg-secondary/10 blur-[100px] dark:bg-secondary/5 md:h-[400px] md:w-[400px] md:blur-[120px]" />
+         <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.04)_1px,transparent_1px)] bg-[size:100px_100px] dark:bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)]" />
       </div>
 
       {!isMobile && (
@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowMobileMenu(false)}
-              className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md"
+              className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-md dark:bg-black/80"
             />
             <motion.div
               initial={{ x: "-100%" }}
@@ -57,16 +57,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <main
         className={cn(
-          "relative z-10 flex flex-1 flex-col transition-all duration-500 ease-in-out",
+          "relative z-10 flex min-w-0 flex-1 flex-col transition-all duration-500 ease-in-out",
           !isMobile && (collapsed ? "pl-[72px]" : "pl-64")
         )}
       >
         <Topbar onMenu={() => setShowMobileMenu(true)} />
-        <div className="flex-1 px-4 py-8 md:px-8 max-w-[1600px] mx-auto w-full pb-40 md:pb-8">
+        <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-1 px-3 py-5 pb-[10rem] md:px-8 md:py-8 md:pb-8">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
+            className="min-w-0 flex-1"
           >
             {children}
           </motion.div>
@@ -75,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* FLASHY Animated Mobile Navigation */}
       {isMobile && (
-        <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-md h-20 bg-[#0a0a0a]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] shadow-[0_25px_80px_-15px_rgba(var(--primary-rgb),0.3)] flex items-center justify-between px-3 overflow-visible group">
+        <nav className="group fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex h-[4.6rem] w-[calc(100%-1rem)] max-w-md -translate-x-1/2 items-center justify-between overflow-visible rounded-[2rem] border border-border/70 bg-card/88 px-2 shadow-[0_25px_80px_-15px_rgba(15,23,42,0.18)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0a0a0a]/60 dark:shadow-[0_25px_80px_-15px_rgba(var(--primary-rgb),0.3)] sm:bottom-6 sm:h-20 sm:w-[92%] sm:px-3">
            {/* Animated Scanning Beam */}
            <motion.div 
              animate={{ x: [-150, 150, -150] }}
@@ -90,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
            <MobileNavItem to="/calendar" icon={Calendar} active={location.pathname === "/calendar"} />
            
            {/* HYPER-ANIMATED Action Button */}
-           <div className="relative -top-10 group/btn">
+           <div className="group/btn relative -top-7 sm:-top-10">
               {/* Outer Orbit */}
               <motion.div 
                 animate={{ rotate: 360 }}
@@ -109,10 +110,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="absolute -inset-2 bg-primary/20 rounded-full blur-xl animate-pulse" />
 
               <Link to="/attendance" className="relative flex items-center justify-center">
-                 <div className="relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 bg-[#0a0a0a] border-2 border-primary/60 shadow-[0_0_40px_rgba(var(--primary-rgb),0.5)] group-active/btn:scale-90 group-hover/btn:border-primary">
+                 <div className="relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary/50 bg-background shadow-[0_0_40px_rgba(var(--primary-rgb),0.18)] transition-all duration-300 group-active/btn:scale-90 group-hover/btn:border-primary dark:border-primary/60 dark:bg-[#0a0a0a] dark:shadow-[0_0_40px_rgba(var(--primary-rgb),0.5)] sm:h-20 sm:w-20">
                     {/* Inner HUD lines */}
                     <div className="absolute inset-2 rounded-full border border-white/5 animate-spin-slow" />
-                    <Zap className="w-10 h-10 text-primary drop-shadow-[0_0_15px_var(--color-primary)] transition-transform duration-500 group-hover/btn:scale-110" />
+                    <Zap className="h-8 w-8 text-primary drop-shadow-[0_0_15px_var(--color-primary)] transition-transform duration-500 group-hover/btn:scale-110 sm:h-10 sm:w-10" />
                     
                     {/* Particle Dots */}
                     <div className="absolute top-2 right-4 w-1 h-1 rounded-full bg-primary shadow-glow animate-ping" />
@@ -131,12 +132,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 function MobileNavItem({ to, icon: Icon, active }: { to: string; icon: any; active: boolean }) {
   return (
-    <Link to={to} className="relative flex-1 flex flex-col items-center justify-center h-full rounded-2xl transition-all duration-300 group/nav">
+    <Link to={to} className="group/nav relative flex h-full min-w-0 flex-1 flex-col items-center justify-center rounded-2xl transition-all duration-300">
       <div className={cn(
-        "relative p-3 rounded-2xl transition-all duration-500",
-        active ? "text-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)] scale-110" : "text-white/20 group-hover/nav:text-white/60"
+        "relative rounded-2xl p-2.5 transition-all duration-500 sm:p-3",
+        active ? "text-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--primary-rgb),0.12)] scale-110" : "text-muted-foreground group-hover/nav:text-foreground/70 dark:text-white/20 dark:group-hover/nav:text-white/60"
       )}>
-        <Icon className={cn("w-6 h-6", active && "drop-shadow-[0_0_10px_var(--color-primary)]")} />
+        <Icon className={cn("h-5 w-5 sm:h-6 sm:w-6", active && "drop-shadow-[0_0_10px_var(--color-primary)]")} />
         
         {/* Active Particle Effect */}
         {active && (
