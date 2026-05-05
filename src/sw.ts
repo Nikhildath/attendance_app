@@ -65,7 +65,7 @@ self.addEventListener('push', (event) => {
     badge: '/favicon.ico',
     vibrate: [100, 50, 100],
     data: {
-      url: self.location.origin + '/chat'
+      url: data?.data?.url ? `${self.location.origin}${data.data.url}` : self.location.origin + '/chat'
     }
   }
 

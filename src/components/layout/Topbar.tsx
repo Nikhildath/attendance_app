@@ -8,7 +8,6 @@ import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/lib/supabase";
-import { requestNotificationPermission } from "@/lib/push";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 

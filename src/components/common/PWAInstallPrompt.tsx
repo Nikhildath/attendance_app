@@ -6,8 +6,12 @@ export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [manualInstall, setManualInstall] = useState(false);
 
   useEffect(() => {
+    const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent);
+
     const handler = (e: any) => {
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
@@ -28,9 +32,17 @@ export function PWAInstallPrompt() {
     setIsStandalone(standalone);
     if (standalone) {
       setShowPrompt(false);
+      setManualInstall(false);
       const sidebarBtn = document.getElementById("pwa-install-button-container");
       if (sidebarBtn) sidebarBtn.classList.add("hidden");
     }
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (!standalone && !deferredPrompt && isIos && isSafari) {
+        setManualInstall(true);
+        setShowPrompt(true);
+      }
+    }, 1500);
 
     // Attach to sidebar button if it exists
     const handleSidebarInstall = () => handleInstall();
@@ -38,6 +50,7 @@ export function PWAInstallPrompt() {
     if (sidebarBtn) sidebarBtn.addEventListener("click", handleSidebarInstall);
 
     return () => {
+      window.clearTimeout(fallbackTimer);
       window.removeEventListener("beforeinstallprompt", handler);
       if (sidebarBtn) sidebarBtn.removeEventListener("click", handleSidebarInstall);
     };
@@ -74,24 +87,32 @@ export function PWAInstallPrompt() {
           </div>
           
           <div className="flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/70">PWA Ready</p>
-            <h3 className="mt-1 font-black leading-tight">Install Attendly Pro</h3>
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/70">
+              {manualInstall ? "Add To Home" : "PWA Ready"}
+            </p>
+            <h3 className="mt-1 font-black leading-tight">
+              {manualInstall ? "Install from your browser menu" : "Install Attendly Pro"}
+            </h3>
             <p className="mt-1 text-xs text-white/85 line-clamp-2">
-              Add it to your home screen for a faster full-screen experience with app-style navigation.
+              {manualInstall
+                ? "On iPhone or iPad, open the browser share menu and tap Add to Home Screen."
+                : "Add it to your home screen for a faster full-screen experience with app-style navigation."}
             </p>
             
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                onClick={handleInstall}
-                className="rounded-xl bg-white px-4 py-2 text-xs font-black text-primary shadow-lg transition-all hover:bg-white/95 active:scale-95"
-              >
-                Install App
-              </button>
+              {!manualInstall && (
+                <button
+                  onClick={handleInstall}
+                  className="rounded-xl bg-white px-4 py-2 text-xs font-black text-primary shadow-lg transition-all hover:bg-white/95 active:scale-95"
+                >
+                  Install App
+                </button>
+              )}
               <button
                 onClick={() => setShowPrompt(false)}
                 className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition-all hover:bg-white/20"
               >
-                Maybe Later
+                {manualInstall ? "Got It" : "Maybe Later"}
               </button>
             </div>
           </div>

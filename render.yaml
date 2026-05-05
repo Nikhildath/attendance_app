@@ -1,42 +1,31 @@
 services:
-  # =========================
-  # Socket.IO Server (Web Service)
-  # =========================
   - type: web
-    name: attendance-socket-server
+    name: attendly-pro
     runtime: node
-    rootDir: socket-server
-    buildCommand: npm install
-    startCommand: npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 3001
-      - key: VITE_SUPABASE_URL
-        sync: false
-      - key: VITE_SUPABASE_ANON_KEY
-        sync: false
-      - key: FRONTEND_URL
-        sync: false
-
-  # =========================
-  # Frontend React App (Static Site)
-  # =========================
-  - type: static_site
-    name: attendance-frontend
     buildCommand: npm install && npm run build
-    staticPublishPath: dist
+    startCommand: npm run start
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: NODE_ENV
+        value: production
       - key: VITE_SUPABASE_URL
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
-      - key: VITE_SOCKET_URL
+      - key: VITE_CHAT_SUPABASE_URL
         sync: false
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+      - key: VITE_CHAT_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_CHAT_STORAGE_BUCKET
+        sync: false
+      - key: VITE_GOOGLE_CALENDAR_API_KEY
+        sync: false
+      - key: VITE_VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

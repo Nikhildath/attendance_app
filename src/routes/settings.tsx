@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { exportToCSV, parseCSV } from "@/lib/csv-utils";
+import { requestNotificationPermission, subscribeToPush } from "@/lib/push";
 import Cropper from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 
@@ -501,10 +502,24 @@ function SettingsPage() {
                       </div>
                       <button 
                         onClick={async () => {
-                          if ('Notification' in window) {
-                            const perm = await Notification.requestPermission();
-                            if (perm === 'granted') toast.success('Notifications enabled!');
-                            else toast.error('Notifications blocked by browser.');
+                          const permission = await requestNotificationPermission();
+                          if (!permission.granted) {
+                            toast.error(permission.reason === "unsupported" ? "Push notifications are not supported on this browser." : "Notifications are blocked by the browser.");
+                            return;
+                          }
+
+                          const result = await subscribeToPush(profile?.id || "");
+                          if (result.ok) {
+                            toast.success("Push notifications enabled on this device.");
+                            return;
+                          }
+
+                          if (result.reason === "missing-vapid-key") {
+                            toast.error("Push notifications are not configured yet. Add the VAPID key to enable them.");
+                          } else if (result.reason === "unsupported") {
+                            toast.error("Push notifications are not supported on this browser.");
+                          } else {
+                            toast.error("Notification permission was granted, but device registration failed.");
                           }
                         }}
                         className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all"

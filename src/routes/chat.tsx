@@ -11,6 +11,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { useAuth } from "@/lib/auth";
+import { requestNotificationPermission, showLocalNotification, subscribeToPush } from "@/lib/push";
 
 // --- CONFIGURATION ---
 const CHAT_SUPABASE_URL = import.meta.env.VITE_CHAT_SUPABASE_URL;
@@ -144,8 +145,9 @@ function ChatPage() {
 
         fetchProfile(stableId);
         
-        // --- NEW: Register for Push Notifications ---
-        subscribeToPush(stableId);
+        subscribeToPush(stableId).catch((err) => {
+          console.warn('Push subscription failed during chat init:', err);
+        });
 
       } catch (err) {
         console.error("Initialization error:", err);
@@ -156,10 +158,7 @@ function ChatPage() {
 
     initChat();
 
-    // Check for standard browser notification permission
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    requestNotificationPermission().catch(() => undefined);
 
     // Auth state listener — only track auth session, profile is keyed by mainProfile.id
     const { data: { subscription } } = chatSupabase.auth.onAuthStateChange((_event, session) => {
@@ -168,31 +167,6 @@ function ChatPage() {
 
     return () => subscription.unsubscribe();
   }, [mainProfile?.id, mainAuthLoading]);
-
-  const subscribeToPush = async (userId: string) => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        // Public VAPID key - this is a generic placeholder, ideally from env
-        applicationServerKey: 'BEl62i4nZ9AnWvV-uSQuvQ6S3vL3-uM5A3RzV-yN8U1C5pQ6F-MvM6Y-UvB9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9'
-      });
-
-      console.log('Push Subscription:', subscription);
-      
-      // Store subscription in Supabase
-      await chatSupabase.from('push_subscriptions').upsert({
-        user_id: userId,
-        subscription: JSON.parse(JSON.stringify(subscription)),
-        updated_at: new Date().toISOString()
-      });
-
-    } catch (err) {
-      console.warn('Push subscription failed:', err);
-    }
-  };
 
   const fetchProfile = async (userId: string) => {
     const { data } = await chatSupabase.from('profiles').select('*').eq('id', userId).single();
@@ -217,8 +191,13 @@ function ChatPage() {
           // Safeguard: only process if the message belongs to the current active room
           if (payload.new.room_id !== activeRoom.id) return;
 
-          if (payload.new.user_id !== profile?.id && 'Notification' in window && Notification.permission === 'granted') {
-             new Notification('New message', { body: `You have a new message in ${activeRoom.name}`, icon: '/icon-192.png' });
+          if (payload.new.user_id !== profile?.id) {
+             showLocalNotification({
+               title: 'New message',
+               body: `You have a new message in ${activeRoom.name}`,
+               icon: '/icon-192.png',
+               data: { url: '/chat' }
+             });
           }
           fetchMessageWithProfile(payload.new.id, activeRoom.id);
         })
@@ -817,4 +796,3 @@ function ChatPage() {
     </div>
   );
 }
-

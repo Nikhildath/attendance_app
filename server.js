@@ -8,6 +8,7 @@ import { Server } from 'socket.io';
 import { createClient } from '@supabase/supabase-js';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import webpush from 'web-push';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -38,12 +39,72 @@ const supabase = createClient(
   process.env.VITE_SUPABASE_ANON_KEY || ''
 );
 
+const chatSupabase = createClient(
+  process.env.VITE_CHAT_SUPABASE_URL || '',
+  process.env.VITE_CHAT_SUPABASE_ANON_KEY || ''
+);
+
+const vapidPublicKey = process.env.VITE_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:support@attendly.local';
+
+if (vapidPublicKey && vapidPrivateKey) {
+  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+} else {
+  console.warn('[Push] VAPID keys are not configured. Web push delivery is disabled.');
+}
+
 app.use(cors());
 app.use(express.json());
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Socket.io server is running' });
+});
+
+app.post('/api/push/send', async (req, res) => {
+  const { userId, payload } = req.body || {};
+
+  if (!userId || !payload?.title || !payload?.body) {
+    return res.status(400).json({ error: 'userId, payload.title and payload.body are required.' });
+  }
+
+  if (!vapidPublicKey || !vapidPrivateKey) {
+    return res.status(503).json({ error: 'Push notifications are not configured on the server.' });
+  }
+
+  try {
+    const { data: subscriptionRow, error } = await chatSupabase
+      .from('push_subscriptions')
+      .select('subscription')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[Push] Failed to fetch subscription:', error);
+      return res.status(500).json({ error: 'Failed to load push subscription.' });
+    }
+
+    if (!subscriptionRow?.subscription) {
+      return res.status(404).json({ error: 'No push subscription found for this user.' });
+    }
+
+    await webpush.sendNotification(
+      subscriptionRow.subscription,
+      JSON.stringify({
+        title: payload.title,
+        body: payload.body,
+        icon: payload.icon || '/icon-192.png',
+        badge: payload.badge || '/icon-192.png',
+        data: payload.data || { url: '/chat' },
+      })
+    );
+
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('[Push] Delivery failed:', error);
+    return res.status(500).json({ error: error?.body || error?.message || 'Push delivery failed.' });
+  }
 });
 
 // Wildcard route to serve index.html for SPA routing

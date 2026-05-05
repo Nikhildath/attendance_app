@@ -87,6 +87,32 @@ Apply the latest `supabase_schema.sql` in the Supabase SQL Editor to provision a
 npm run dev
 ```
 
+This single command starts:
+- the Vite frontend on `http://localhost:8080`
+- the Node backend on `http://localhost:3001`
+
+The frontend proxies `/api/*` requests to the backend automatically, so local push-notification send endpoints behave the same way they will on Render.
+
+### 5. Single-Service Render Deployment
+The app is now configured to run as one Render web service:
+- `npm run build` builds the frontend into `dist`
+- `npm run start` launches `server.js`
+- `server.js` serves the frontend, Socket.IO, and push endpoints from the same host
+
+Required Render environment variables:
+```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_CHAT_SUPABASE_URL=...
+VITE_CHAT_SUPABASE_ANON_KEY=...
+VITE_CHAT_STORAGE_BUCKET=chat-media
+VITE_GOOGLE_CALENDAR_API_KEY=...
+VITE_VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:you@example.com
+FRONTEND_URL=https://your-render-app.onrender.com
+```
+
 ---
 
 ## 📄 License & Credits

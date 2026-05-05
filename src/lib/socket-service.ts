@@ -46,7 +46,10 @@ class SocketService {
     this.isConnecting = true;
     this.connectionPromise = new Promise((resolve, reject) => {
       try {
-        const socketUrl = url || import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
+        const socketUrl =
+          url ||
+          import.meta.env.VITE_SOCKET_URL ||
+          (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
         
         console.log('🔌 Connecting to Socket server at:', socketUrl);
         console.log('🔑 Auth - Token:', !!token, 'UserId:', !!userId);
