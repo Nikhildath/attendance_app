@@ -137,6 +137,21 @@ function AttendancePage() {
   const executePunch = async () => {
     if (!profile?.id) return;
     setLoading(true);
+
+    if (attendance?.id && !attendance.check_out) {
+      const { error } = await supabase
+        .from("attendance")
+        .update({ check_out: new Date().toISOString() })
+        .eq("id", attendance.id);
+      
+      if (!error) {
+        toast.success("Checked out successfully");
+        loadStatus();
+        loadHistory();
+      } else toast.error(error.message);
+      setLoading(false);
+      return;
+    }
     
     let lat = location?.coords.latitude || null;
     let lng = location?.coords.longitude || null;
@@ -206,24 +221,7 @@ function AttendancePage() {
   const handlePunch = async () => {
     if (!profile) return;
     
-    // Check-out logic
-    if (attendance?.id && !attendance.check_out) {
-      setLoading(true);
-      const { error } = await supabase
-        .from("attendance")
-        .update({ check_out: new Date().toISOString() })
-        .eq("id", attendance.id);
-      
-      if (!error) {
-        toast.success("Checked out successfully");
-        loadStatus();
-        loadHistory();
-      } else toast.error(error.message);
-      setLoading(false);
-      return;
-    }
-
-    // Punch-in logic
+    // Punch logic (both in and out require biometrics)
     setState("scanning");
     setScanProgress(0);
     
