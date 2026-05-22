@@ -180,6 +180,12 @@
 @layer utilities {
   .gradient-hero { background-image: var(--gradient-hero); }
   .gradient-primary { background-image: var(--gradient-primary); }
+  .bg-grid-pattern {
+    background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  }
+  .bg-grid-pattern-dark {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  }
   .shadow-elegant { box-shadow: var(--shadow-elegant); }
   .shadow-card { box-shadow: var(--shadow-card); }
   .glass {
@@ -401,3 +407,5 @@
   background: rgba(0, 0, 0, 0.5) !important;
   color: #888 !important;
 }
+
+/* Trigger rebuild */

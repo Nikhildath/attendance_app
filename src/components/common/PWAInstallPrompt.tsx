@@ -9,6 +9,7 @@ export function PWAInstallPrompt() {
   const [manualInstall, setManualInstall] = useState(false);
 
   useEffect(() => {
+    const isDismissed = localStorage.getItem("pwa-prompt-dismissed") === "true";
     const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
     const isSafari = /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent);
 
@@ -18,7 +19,9 @@ export function PWAInstallPrompt() {
       // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
       // Update UI notify the user they can install the PWA
-      setShowPrompt(true);
+      if (!isDismissed) {
+        setShowPrompt(true);
+      }
       
       // Show sidebar button
       const sidebarBtn = document.getElementById("pwa-install-button-container");
@@ -38,7 +41,7 @@ export function PWAInstallPrompt() {
     }
 
     const fallbackTimer = window.setTimeout(() => {
-      if (!standalone && !deferredPrompt && isIos && isSafari) {
+      if (!standalone && !deferredPrompt && isIos && isSafari && !isDismissed) {
         setManualInstall(true);
         setShowPrompt(true);
       }
@@ -70,18 +73,23 @@ export function PWAInstallPrompt() {
     if (sidebarBtn) sidebarBtn.classList.add("hidden");
   };
 
+  const handleDismiss = () => {
+    setShowPrompt(false);
+    localStorage.setItem("pwa-prompt-dismissed", "true");
+  };
+
   if (!showPrompt || isStandalone) return null;
 
   return (
     <div className={cn(
       "animate-in slide-in-from-bottom-10 fade-in duration-500 fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[100] md:bottom-8 md:left-auto md:right-8 md:w-80"
     )}>
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(145deg,rgba(14,165,233,0.96),rgba(37,99,235,0.92))] p-4 text-white shadow-2xl shadow-primary/30 backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(145deg,rgba(14,165,233,0.96),rgba(37,99,235,0.92))] p-4 text-white shadow-2xl shadow-primary/30 backdrop-blur-xl pointer-events-auto">
         {/* Background Glow */}
-        <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/15 blur-2xl" />
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.12))]" />
+        <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/15 blur-2xl pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.12))] pointer-events-none" />
         
-        <div className="flex items-start gap-4">
+        <div className="relative z-10 flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/18 backdrop-blur-sm ring-1 ring-white/20">
             <Download className="h-6 w-6 text-white" />
           </div>
@@ -109,7 +117,7 @@ export function PWAInstallPrompt() {
                 </button>
               )}
               <button
-                onClick={() => setShowPrompt(false)}
+                onClick={handleDismiss}
                 className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition-all hover:bg-white/20"
               >
                 {manualInstall ? "Got It" : "Maybe Later"}
@@ -118,7 +126,7 @@ export function PWAInstallPrompt() {
           </div>
           
           <button 
-            onClick={() => setShowPrompt(false)}
+            onClick={handleDismiss}
             className="shrink-0 rounded-full p-1 text-white/60 hover:text-white transition-colors"
           >
             <X className="h-4 w-4" />

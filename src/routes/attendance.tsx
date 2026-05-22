@@ -338,9 +338,9 @@ function AttendancePage() {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-10">
         <div className="flex min-w-0 flex-col gap-8 lg:gap-10">
-          <div className="group relative overflow-hidden rounded-[2.75rem] border border-white/[0.05] bg-white/[0.01] p-5 shadow-2xl backdrop-blur-3xl md:rounded-[4rem] md:p-10">
+          <div className="group relative overflow-hidden rounded-[2.75rem] border border-foreground/5 dark:border-white/[0.05] bg-foreground/[0.01] dark:bg-white/[0.01] p-5 shadow-2xl backdrop-blur-3xl md:rounded-[4rem] md:p-10">
             <div className="absolute inset-0 opacity-10 pointer-events-none">
-               <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]" />
+               <div className="absolute inset-0 bg-grid-pattern dark:bg-grid-pattern-dark bg-[size:40px_40px]" />
             </div>
             
             <div className="relative z-10 flex flex-col items-center gap-8 text-center md:gap-12">
@@ -389,16 +389,16 @@ function AttendancePage() {
                       className={cn(
                         "group relative flex flex-col items-center justify-center gap-2 rounded-full transition-all duration-500",
                         "z-10 h-44 w-44 border-4 sm:h-56 sm:w-56 md:h-80 md:w-80",
-                        isPunchedIn ? "bg-secondary/10 border-secondary shadow-[0_0_50px_rgba(var(--secondary-rgb),0.2)]" : "bg-[#0a0a0a] border-primary/60 shadow-[0_0_80px_rgba(var(--primary-rgb),0.5)] group-active:scale-95 hover:border-primary"
+                        isPunchedIn ? "bg-secondary/10 border-secondary shadow-[0_0_50px_rgba(var(--secondary-rgb),0.2)]" : "bg-card dark:bg-[#0a0a0a] border-primary/60 shadow-[0_0_80px_rgba(var(--primary-rgb),0.5)] group-active:scale-95 hover:border-primary"
                       )}
                     >
                       {/* Inner HUD lines */}
-                      <div className="absolute inset-4 rounded-full border border-white/5 animate-spin-slow pointer-events-none" />
+                      <div className="absolute inset-4 rounded-full border border-foreground/5 dark:border-white/5 animate-spin-slow pointer-events-none" />
                       
                       {/* Particle Dots */}
                       <div className="absolute top-7 right-9 h-2 w-2 rounded-full bg-primary shadow-glow animate-ping sm:right-12 sm:top-8" />
                       <div className="absolute bottom-9 left-8 h-2 w-2 rounded-full bg-secondary shadow-glow animate-pulse sm:bottom-10 sm:left-10" />
-                      <div className="absolute inset-2 rounded-full border border-white/5 animate-spin-slow" />
+                      <div className="absolute inset-2 rounded-full border border-foreground/5 dark:border-white/5 animate-spin-slow" />
                       <AnimatePresence mode="wait">
                         <motion.div
                           key={isPunchedIn ? 'out' : 'in'}
@@ -434,7 +434,7 @@ function AttendancePage() {
                              </div>
                           </div>
                           <div className="mt-8 space-y-1 text-center">
-                             <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/40">Neural Sync In Progress</p>
+                             <p className="text-[10px] font-black uppercase tracking-[0.5em] text-foreground/40 dark:text-white/40">Neural Sync In Progress</p>
                              <p className="text-[8px] font-bold uppercase tracking-widest text-primary/60">Spatio-Temporal Verification</p>
                           </div>
                         </motion.div>
@@ -452,7 +452,7 @@ function AttendancePage() {
                     <Button 
                       onClick={registerBiometrics}
                       variant="ghost" 
-                      className="h-8 text-[11px] font-black uppercase tracking-tighter text-white hover:text-primary underline underline-offset-4"
+                      className="h-8 text-[11px] font-black uppercase tracking-tighter text-foreground dark:text-white hover:text-primary underline underline-offset-4"
                     >
                       Setup Device Identity
                     </Button>
@@ -463,11 +463,11 @@ function AttendancePage() {
               <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
                  <div className="flex flex-col items-center gap-1">
                     <MapPin className="w-4 h-4 text-primary" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-white/30">{branch?.name || "Global Hub"}</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-foreground/30 dark:text-white/30">{branch?.name || "Global Hub"}</span>
                  </div>
                  <div className="flex flex-col items-center gap-1">
                     <Radar className="w-4 h-4 text-secondary" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-white/30">{location ? "Spatial Verified" : "Offline"}</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-foreground/30 dark:text-white/30">{location ? "Spatial Verified" : "Offline"}</span>
                  </div>
               </div>
             </div>
@@ -475,12 +475,12 @@ function AttendancePage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-8 lg:gap-10">
-           <div className="flex flex-1 flex-col gap-6 rounded-[2.5rem] border border-white/[0.05] bg-[#0a0a0a] p-5 shadow-2xl md:gap-8 md:rounded-[3rem] md:p-10">
+           <div className="flex flex-1 flex-col gap-6 rounded-[2.5rem] border border-foreground/5 dark:border-white/[0.05] bg-card dark:bg-[#0a0a0a] p-5 shadow-2xl md:gap-8 md:rounded-[3rem] md:p-10">
               <div className="flex items-center justify-between gap-4">
                  <h2 className="text-xl font-black italic uppercase tracking-tighter flex items-center gap-3">
                     <HistoryIcon className="w-5 h-5 text-primary" /> Data History
                  </h2>
-                 <Calendar className="w-5 h-5 text-white/20" />
+                 <Calendar className="w-5 h-5 text-foreground/20 dark:text-white/20" />
               </div>
 
               <div className="space-y-4">
@@ -490,14 +490,14 @@ function AttendancePage() {
                        <p className="text-[10px] font-black uppercase tracking-[0.4em]">No Temporal Data</p>
                     </div>
                  ) : history.map((item) => (
-                    <div key={item.id} className="group flex flex-col gap-4 rounded-[1.5rem] border border-white/[0.03] bg-white/[0.02] p-4 transition-all hover:bg-white/[0.04] sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                    <div key={item.id} className="group flex flex-col gap-4 rounded-[1.5rem] border border-foreground/5 dark:border-white/[0.03] bg-foreground/[0.02] dark:bg-white/[0.02] p-4 transition-all hover:bg-foreground/[0.04] dark:hover:bg-white/[0.04] sm:flex-row sm:items-center sm:justify-between sm:p-5">
                        <div className="flex min-w-0 items-center gap-4 sm:gap-5">
                           <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
                              <Clock className="w-5 h-5" />
                           </div>
                           <div className="min-w-0">
-                             <p className="text-[11px] font-black uppercase text-white tracking-tight">{new Date(item.check_in).toLocaleDateString()}</p>
-                             <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-1">
+                             <p className="text-[11px] font-black uppercase text-foreground dark:text-white tracking-tight">{new Date(item.check_in).toLocaleDateString()}</p>
+                             <p className="text-[9px] font-bold text-foreground/30 dark:text-white/30 uppercase tracking-widest mt-1">
                                 {new Date(item.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
                                 {item.check_out ? ` → ${new Date(item.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : " · Cycle Active"}
                              </p>
@@ -511,7 +511,7 @@ function AttendancePage() {
               <Button 
                 onClick={handleExportHistory}
                 variant="ghost" 
-                className="mt-auto h-12 rounded-2xl border border-white/5 text-[10px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white hover:bg-white/5 transition-all"
+                className="mt-auto h-12 rounded-2xl border border-foreground/5 dark:border-white/5 text-[10px] font-black uppercase tracking-[0.3em] text-foreground/20 dark:text-white/20 hover:text-foreground dark:hover:text-white hover:bg-foreground/5 dark:hover:bg-white/5 transition-all"
               >
                  Export Temporal Archives
               </Button>
