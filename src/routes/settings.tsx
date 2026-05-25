@@ -183,11 +183,11 @@ function SettingsPage() {
                 "group flex items-center justify-between p-5 rounded-3xl border transition-all duration-500",
                 activeTab === tab.id
                   ? "bg-primary/10 border-primary/20 text-primary shadow-glow"
-                  : "bg-white/[0.02] border-white/5 text-white/40 hover:bg-white/[0.05] hover:text-white"
+                  : "bg-muted/20 dark:bg-white/[0.02] border-border/60 dark:border-white/5 text-muted-foreground dark:text-white/40 hover:bg-muted/30 dark:hover:bg-white/[0.05] hover:text-foreground dark:hover:text-white"
               )}
             >
               <div className="flex items-center gap-4">
-                <tab.icon className={cn("w-5 h-5", activeTab === tab.id ? "text-primary" : "text-zinc-500")} />
+                <tab.icon className={cn("w-5 h-5", activeTab === tab.id ? "text-primary" : "text-muted-foreground dark:text-zinc-500")} />
                 <span className="text-xs font-black uppercase tracking-[0.2em]">{tab.label}</span>
               </div>
               <ChevronRight className={cn("w-4 h-4 transition-transform", activeTab === tab.id ? "translate-x-0" : "-translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0")} />
@@ -209,7 +209,7 @@ function SettingsPage() {
             key={activeTab}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="p-10 rounded-[3rem] bg-white/[0.01] backdrop-blur-3xl border border-white/[0.03] shadow-2xl flex flex-col gap-10"
+            className="p-10 rounded-[3rem] bg-muted/10 dark:bg-white/[0.01] backdrop-blur-3xl border border-border/30 dark:border-white/[0.03] shadow-2xl flex flex-col gap-10"
           >
             {activeTab === "profile" && (
               <div className="space-y-10">
@@ -217,7 +217,7 @@ function SettingsPage() {
                   <div className="relative group">
                     <div className="absolute -inset-4 bg-primary/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div 
-                      className="relative w-32 h-32 rounded-full border-4 border-white/5 overflow-hidden shadow-2xl cursor-pointer"
+                      className="relative w-32 h-32 rounded-full border-4 border-border/60 dark:border-white/5 overflow-hidden shadow-2xl cursor-pointer"
                       onClick={() => document.getElementById('avatar-upload')?.click()}
                     >
                       <img 
@@ -246,7 +246,7 @@ function SettingsPage() {
                   </div>
                   <div className="flex-1 space-y-2">
                     <h3 className="text-2xl font-black italic uppercase tracking-tighter">{profile?.name}</h3>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">{profile?.role} · {profile?.dept || "Global Workforce"}</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 dark:text-white/20">{profile?.role} · {profile?.dept || "Global Workforce"}</p>
                     <div className="flex gap-2 mt-4">
                        <span className="px-3 py-1 bg-success/10 text-success border border-success/20 rounded-full text-[8px] font-black uppercase tracking-widest">Active Status</span>
                        <span className="px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-[8px] font-black uppercase tracking-widest">Enterprise Verified</span>
@@ -256,19 +256,19 @@ function SettingsPage() {
 
                 <div className="grid gap-8">
                    <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 ml-1">Full Name</Label>
+                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/70 dark:text-white/30 ml-1">Full Name</Label>
                      <Input 
                        value={name} 
                        onChange={(e) => setName(e.target.value)}
-                       className="h-14 rounded-2xl bg-white/[0.02] border-white/5 focus:border-primary/50 text-sm font-bold uppercase tracking-tight" 
+                       className="h-14 rounded-2xl bg-muted/20 dark:bg-white/[0.02] border-border/60 dark:border-white/5 focus:border-primary/50 text-sm font-bold uppercase tracking-tight" 
                      />
                    </div>
                    <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 ml-1">Email Protocol</Label>
+                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/70 dark:text-white/30 ml-1">Email Protocol</Label>
                      <Input 
                        value={profile?.email} 
                        disabled
-                       className="h-14 rounded-2xl bg-white/[0.01] border-white/5 text-white/40 text-sm font-bold uppercase tracking-tight" 
+                       className="h-14 rounded-2xl bg-muted/10 dark:bg-white/[0.01] border-border/60 dark:border-white/5 text-muted-foreground dark:text-white/40 text-sm font-bold uppercase tracking-tight" 
                      />
                    </div>
                 </div>
@@ -291,7 +291,7 @@ function SettingsPage() {
                    </div>
                    <div>
                       <h3 className="text-xl font-black italic uppercase tracking-tighter">Security Protocols</h3>
-                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Manage your access and authentication methods</p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 dark:text-white/20">Manage your access and authentication methods</p>
                    </div>
                 </div>
 
@@ -305,14 +305,14 @@ function SettingsPage() {
                    />
                    
                    {/* Passkey Registration Section */}
-                   <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/[0.03] flex items-center justify-between group hover:bg-white/[0.04] transition-all">
+                   <div className="p-6 rounded-3xl bg-muted/20 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.03] flex items-center justify-between group hover:bg-muted/30 dark:hover:bg-white/[0.04] transition-all">
                       <div className="flex items-center gap-5">
                          <div className="p-3 rounded-xl bg-primary/10 text-primary border border-primary/20">
                             <Fingerprint className="w-5 h-5" />
                          </div>
                          <div>
-                            <h4 className="text-sm font-bold uppercase tracking-tight text-white/80">Biometric Passkey</h4>
-                            <p className="text-[10px] font-medium text-white/20 uppercase tracking-widest mt-1">
+                            <h4 className="text-sm font-bold uppercase tracking-tight text-foreground/80 dark:text-white/80">Biometric Passkey</h4>
+                            <p className="text-[10px] font-medium text-muted-foreground/60 dark:text-white/20 uppercase tracking-widest mt-1">
                                {profile?.passkey_registered ? "Device Identity Active" : "Use TouchID / FaceID for attendance"}
                             </p>
                          </div>
@@ -345,13 +345,13 @@ function SettingsPage() {
                    </div>
                    <div>
                       <h3 className="text-xl font-black italic uppercase tracking-tighter">Visual Experience</h3>
-                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Configure the interface aesthetic and behavior</p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 dark:text-white/20">Configure the interface aesthetic and behavior</p>
                    </div>
                 </div>
 
                 <div className="grid gap-8">
                    <div className="space-y-6">
-                      <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 ml-1">Theme Mode</Label>
+                      <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/70 dark:text-white/30 ml-1">Theme Mode</Label>
                       <div className="grid grid-cols-3 gap-4">
                          <ThemeButton active={theme === 'dark'} onClick={() => setTheme('dark')} icon={Moon} label="Dark" />
                          <ThemeButton active={theme === 'light'} onClick={() => setTheme('light')} icon={Sun} label="Light" />
@@ -359,7 +359,7 @@ function SettingsPage() {
                       </div>
                    </div>
 
-                   <div className="space-y-4 pt-4 border-t border-white/5">
+                   <div className="space-y-4 pt-4 border-t border-border/60 dark:border-white/5">
                       <SecurityItem 
                         icon={Bell} 
                         title="Neural Notifications" 
@@ -387,69 +387,69 @@ function SettingsPage() {
                    </div>
                    <div>
                       <h3 className="text-xl font-black italic uppercase tracking-tighter">Organization Hub</h3>
-                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Manage global enterprise policies and fiscal rules</p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 dark:text-white/20">Manage global enterprise policies and fiscal rules</p>
                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 ml-1">Company Name</Label>
+                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/70 dark:text-white/30 ml-1">Company Name</Label>
                      <Input 
                        value={orgData.company_name} 
                        onChange={(e) => setOrgData({ ...orgData, company_name: e.target.value })}
-                       className="h-14 rounded-2xl bg-white/[0.02] border-white/5 text-sm font-bold" 
+                       className="h-14 rounded-2xl bg-muted/20 dark:bg-white/[0.02] border-border/60 dark:border-white/5 text-sm font-bold" 
                      />
                    </div>
                    <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 ml-1">Currency Symbol</Label>
+                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/70 dark:text-white/30 ml-1">Currency Symbol</Label>
                      <Input 
                        value={orgData.default_currency} 
                        onChange={(e) => setOrgData({ ...orgData, default_currency: e.target.value })}
-                       className="h-14 rounded-2xl bg-white/[0.02] border-white/5 text-sm font-bold" 
+                       className="h-14 rounded-2xl bg-muted/20 dark:bg-white/[0.02] border-border/60 dark:border-white/5 text-sm font-bold" 
                      />
                    </div>
                    <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 ml-1">Late Threshold (Mins)</Label>
+                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/70 dark:text-white/30 ml-1">Late Threshold (Mins)</Label>
                      <Input 
                        type="number"
                        value={orgData.late_threshold_mins} 
                        onChange={(e) => setOrgData({ ...orgData, late_threshold_mins: parseInt(e.target.value) })}
-                       className="h-14 rounded-2xl bg-white/[0.02] border-white/5 text-sm font-bold" 
+                       className="h-14 rounded-2xl bg-muted/20 dark:bg-white/[0.02] border-border/60 dark:border-white/5 text-sm font-bold" 
                      />
                    </div>
                    <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 ml-1">Late Fine Amount</Label>
+                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/70 dark:text-white/30 ml-1">Late Fine Amount</Label>
                      <Input 
                        type="number"
                        value={orgData.late_fine_amount} 
                        onChange={(e) => setOrgData({ ...orgData, late_fine_amount: parseInt(e.target.value) })}
-                       className="h-14 rounded-2xl bg-white/[0.02] border-white/5 text-sm font-bold" 
+                       className="h-14 rounded-2xl bg-muted/20 dark:bg-white/[0.02] border-border/60 dark:border-white/5 text-sm font-bold" 
                      />
                    </div>
                    <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 ml-1">Working Hours / Day</Label>
+                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/70 dark:text-white/30 ml-1">Working Hours / Day</Label>
                      <Input 
                        type="number"
                        value={orgData.working_hours_per_day} 
                        onChange={(e) => setOrgData({ ...orgData, working_hours_per_day: parseInt(e.target.value) })}
-                       className="h-14 rounded-2xl bg-white/[0.02] border-white/5 text-sm font-bold" 
+                       className="h-14 rounded-2xl bg-muted/20 dark:bg-white/[0.02] border-border/60 dark:border-white/5 text-sm font-bold" 
                      />
                    </div>
                    <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 ml-1">Overtime Rate (Per Hr)</Label>
+                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/70 dark:text-white/30 ml-1">Overtime Rate (Per Hr)</Label>
                      <Input 
                        type="number"
                        value={orgData.overtime_rate} 
                        onChange={(e) => setOrgData({ ...orgData, overtime_rate: parseInt(e.target.value) })}
-                       className="h-14 rounded-2xl bg-white/[0.02] border-white/5 text-sm font-bold" 
+                       className="h-14 rounded-2xl bg-muted/20 dark:bg-white/[0.02] border-border/60 dark:border-white/5 text-sm font-bold" 
                      />
                    </div>
                    <div className="col-span-full space-y-3">
-                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 ml-1">Weekend Configuration</Label>
+                     <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/70 dark:text-white/30 ml-1">Weekend Configuration</Label>
                      <select 
                        value={orgData.weekend_type || 'second_saturday_sundays'} 
                        onChange={(e) => setOrgData({ ...orgData, weekend_type: e.target.value })}
-                       className="h-14 w-full rounded-2xl bg-white/[0.02] border border-white/5 text-sm font-bold px-4 text-white"
+                       className="h-14 w-full rounded-2xl bg-muted/20 dark:bg-white/[0.02] border border-border/60 dark:border-white/5 text-foreground dark:text-white"
                      >
                        <option value="second_saturday_sundays">Sundays & 2nd Saturday</option>
                        <option value="all_saturdays_sundays">Sundays & All Saturdays</option>
@@ -476,19 +476,19 @@ function SettingsPage() {
                    </div>
                    <div>
                       <h3 className="text-xl font-black italic uppercase tracking-tighter">Data & System</h3>
-                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Backup, restore, notifications and maintenance</p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 dark:text-white/20">Backup, restore, notifications and maintenance</p>
                    </div>
                 </div>
 
                 {/* Notification Controls */}
                 <div className="grid gap-4">
                    <ToggleRow label="Email Notifications" defaultChecked storageKey="pref_email_notif" />
-                   <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/[0.03] flex items-center justify-between">
+                   <div className="p-6 rounded-3xl bg-muted/20 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.03] flex items-center justify-between">
                       <div className="flex items-center gap-5">
-                         <div className="p-3 rounded-xl bg-white/5 text-white/40"><Bell className="w-5 h-5" /></div>
+                         <div className="p-3 rounded-xl bg-muted/30 dark:bg-white/5 text-muted-foreground dark:text-white/40"><Bell className="w-5 h-5" /></div>
                          <div>
-                            <h4 className="text-sm font-bold uppercase tracking-tight text-white/80">Push Notifications</h4>
-                            <p className="text-[10px] font-medium text-white/20 uppercase tracking-widest mt-1">Receive alerts even when browser is closed</p>
+                            <h4 className="text-sm font-bold uppercase tracking-tight text-foreground/80 dark:text-white/80">Push Notifications</h4>
+                            <p className="text-[10px] font-medium text-muted-foreground/60 dark:text-white/20 uppercase tracking-widest mt-1">Receive alerts even when browser is closed</p>
                          </div>
                       </div>
                       <button 
@@ -528,7 +528,7 @@ function SettingsPage() {
                       <div className="p-3 rounded-xl bg-secondary/10 text-secondary"><AlertTriangle className="w-6 h-6" /></div>
                       <div>
                          <h4 className="text-sm font-black uppercase tracking-wider text-secondary">Maintenance & Hard Reset</h4>
-                         <p className="text-[10px] font-medium text-white/30 mt-1">Clear local data, unregister service workers, and force re-login.</p>
+                         <p className="text-[10px] font-medium text-muted-foreground/70 dark:text-white/30 mt-1">Clear local data, unregister service workers, and force re-login.</p>
                       </div>
                    </div>
                    <div className="mt-6 flex flex-wrap gap-4">
@@ -549,7 +549,7 @@ function SettingsPage() {
                       </button>
                       <button 
                         onClick={() => window.location.reload()}
-                        className="px-6 py-3 rounded-2xl border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:bg-white/10 transition-all"
+                        className="px-6 py-3 rounded-2xl border border-border/60 dark:border-white/5 bg-muted/30 dark:bg-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground dark:text-white/40 hover:bg-muted/40 dark:bg-white/10 transition-all"
                       >
                         Refresh Application
                       </button>
@@ -561,7 +561,7 @@ function SettingsPage() {
                   <div className="grid gap-6">
                     <div className="p-8 rounded-3xl border border-primary/20 bg-primary/5">
                        <h4 className="text-sm font-black uppercase tracking-wider text-primary">Full System Backup & Restore</h4>
-                       <p className="text-[10px] font-medium text-white/30 mt-1">Download or restore ALL data (Attendance, Leaves, Settings, Profiles, etc.) in a single JSON file.</p>
+                       <p className="text-[10px] font-medium text-muted-foreground/70 dark:text-white/30 mt-1">Download or restore ALL data (Attendance, Leaves, Settings, Profiles, etc.) in a single JSON file.</p>
                        <div className="mt-6 flex flex-wrap gap-4">
                           <button 
                             onClick={async () => {
@@ -580,7 +580,7 @@ function SettingsPage() {
                           >
                             <Download className="w-4 h-4" /> Download Backup
                           </button>
-                          <label className="px-6 py-3 rounded-2xl border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-white/60 hover:bg-white/10 transition-all cursor-pointer flex items-center gap-2">
+                          <label className="px-6 py-3 rounded-2xl border border-border/60 dark:border-white/10 bg-muted/30 dark:bg-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60 dark:text-white/60 hover:bg-muted/40 dark:bg-white/10 transition-all cursor-pointer flex items-center gap-2">
                             <Upload className="w-4 h-4" /> Restore System
                             <input type="file" accept=".json" className="hidden" onChange={async (e) => {
                               const file = e.target.files?.[0]; if (!file) return;
@@ -600,9 +600,9 @@ function SettingsPage() {
                        </div>
                     </div>
 
-                    <div className="p-8 rounded-3xl border border-dashed border-white/10 bg-white/[0.02]">
-                       <h4 className="text-sm font-black uppercase tracking-wider text-white/40">Workforce CSV Tools</h4>
-                       <p className="text-[10px] font-medium text-white/20 mt-1">Export or import the employee list for spreadsheet use.</p>
+                    <div className="p-8 rounded-3xl border border-dashed border-border/60 dark:border-white/10 bg-muted/20 dark:bg-white/[0.02]">
+                       <h4 className="text-sm font-black uppercase tracking-wider text-muted-foreground dark:text-white/40">Workforce CSV Tools</h4>
+                       <p className="text-[10px] font-medium text-muted-foreground/60 dark:text-white/20 mt-1">Export or import the employee list for spreadsheet use.</p>
                        <div className="mt-4 flex flex-wrap gap-6">
                           <button 
                             onClick={async () => {
@@ -649,10 +649,10 @@ function SettingsPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
           >
-            <div className="bg-[#0a0a0a] rounded-3xl border border-white/10 p-6 w-full max-w-md flex flex-col gap-6 shadow-2xl relative overflow-hidden">
+            <div className="bg-[#0a0a0a] rounded-3xl border border-border/60 dark:border-white/10 p-6 w-full max-w-md flex flex-col gap-6 shadow-2xl relative overflow-hidden">
                <div className="absolute inset-0 bg-primary/5 pointer-events-none" />
                <h3 className="text-lg font-black uppercase tracking-widest text-center text-white relative z-10">Adjust Image</h3>
-               <div className="relative w-full h-80 bg-black/50 rounded-2xl overflow-hidden border border-white/5">
+               <div className="relative w-full h-80 bg-black/50 rounded-2xl overflow-hidden border border-border/60 dark:border-white/5">
                  <Cropper
                    image={cropImage}
                    crop={crop}
@@ -668,7 +668,7 @@ function SettingsPage() {
                
                <div className="relative z-10 space-y-4">
                  <div className="px-4">
-                   <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 block mb-2 text-center">Zoom Level</Label>
+                   <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground dark:text-white/40 block mb-2 text-center">Zoom Level</Label>
                    <input
                      type="range"
                      value={zoom}
@@ -681,7 +681,7 @@ function SettingsPage() {
                    />
                  </div>
                  <div className="flex gap-4">
-                   <Button variant="ghost" className="flex-1 h-12 rounded-xl text-xs font-black uppercase tracking-widest text-white/50 hover:bg-white/5" onClick={() => setCropImage(null)}>Cancel</Button>
+                   <Button variant="ghost" className="flex-1 h-12 rounded-xl text-xs font-black uppercase tracking-widest text-foreground/50 dark:text-white/50 hover:bg-muted/30 dark:bg-white/5" onClick={() => setCropImage(null)}>Cancel</Button>
                    <Button className="flex-1 h-12 rounded-xl text-xs font-black uppercase tracking-widest bg-primary text-primary-foreground shadow-glow hover:brightness-110" onClick={handleCropSave} disabled={loading}>
                      {loading ? "Saving..." : "Save Image"}
                    </Button>
@@ -697,14 +697,14 @@ function SettingsPage() {
 
 function SecurityItem({ icon: Icon, title, desc, action, disabled, onClick }: any) {
   return (
-    <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/[0.03] flex items-center justify-between group hover:bg-white/[0.04] transition-all">
+    <div className="p-6 rounded-3xl bg-muted/20 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.03] flex items-center justify-between group hover:bg-muted/30 dark:hover:bg-white/[0.04] transition-all">
        <div className="flex items-center gap-5">
-          <div className="p-3 rounded-xl bg-white/5 text-white/40 group-hover:text-primary transition-colors">
+          <div className="p-3 rounded-xl bg-muted/30 dark:bg-white/5 text-muted-foreground dark:text-white/40 group-hover:text-primary transition-colors">
              <Icon className="w-5 h-5" />
           </div>
           <div>
-             <h4 className="text-sm font-bold uppercase tracking-tight text-white/80">{title}</h4>
-             <p className="text-[10px] font-medium text-white/20 uppercase tracking-widest mt-1">{desc}</p>
+             <h4 className="text-sm font-bold uppercase tracking-tight text-foreground/80 dark:text-white/80">{title}</h4>
+             <p className="text-[10px] font-medium text-muted-foreground/60 dark:text-white/20 uppercase tracking-widest mt-1">{desc}</p>
           </div>
        </div>
        <button 
@@ -712,7 +712,7 @@ function SecurityItem({ icon: Icon, title, desc, action, disabled, onClick }: an
          disabled={disabled}
          className={cn(
            "px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-           disabled ? "bg-white/5 text-white/20 cursor-not-allowed" : "bg-white/5 text-white/60 hover:bg-primary hover:text-primary-foreground"
+           disabled ? "bg-muted/30 dark:bg-white/5 text-muted-foreground/60 dark:text-white/20 cursor-not-allowed" : "bg-muted/30 dark:bg-white/5 text-foreground/60 dark:text-white/60 hover:bg-primary hover:text-primary-foreground"
          )}
        >
          {action}
@@ -727,7 +727,7 @@ function ThemeButton({ active, onClick, icon: Icon, label }: any) {
       onClick={onClick}
       className={cn(
         "flex flex-col items-center gap-3 p-6 rounded-3xl border transition-all duration-500",
-        active ? "bg-primary/10 border-primary/20 text-primary shadow-glow" : "bg-white/[0.02] border-white/5 text-zinc-500 hover:border-white/10"
+        active ? "bg-primary/10 border-primary/20 text-primary shadow-glow" : "bg-muted/20 dark:bg-white/[0.02] border-border/60 dark:border-white/5 text-muted-foreground dark:text-zinc-500 hover:border-border/60 dark:border-white/10"
       )}
     >
       <Icon className="w-6 h-6" />
@@ -755,13 +755,13 @@ function ToggleRow({ label, defaultChecked, storageKey }: { label: string; defau
   };
 
   return (
-    <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/[0.03] flex items-center justify-between">
-       <span className="text-sm font-bold uppercase tracking-tight text-white/80">{label}</span>
+    <div className="p-6 rounded-3xl bg-muted/20 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.03] flex items-center justify-between">
+       <span className="text-sm font-bold uppercase tracking-tight text-foreground/80 dark:text-white/80">{label}</span>
        <button
          onClick={handleToggle}
          className={cn(
            "relative h-6 w-11 rounded-full transition-colors",
-           on ? "bg-primary" : "bg-white/10"
+           on ? "bg-primary" : "bg-muted/40 dark:bg-white/10"
          )}
        >
          <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform", on ? "left-[22px]" : "left-0.5")} />

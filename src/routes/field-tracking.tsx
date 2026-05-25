@@ -429,7 +429,7 @@ function FieldTrackingPage() {
           
           {/* Overlay info */}
           <div className="absolute top-6 left-6 z-[1000]">
-            <div className="glass rounded-xl border border-white/40 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-foreground/50 shadow-sm backdrop-blur-md">
+            <div className="glass rounded-xl border border-border/60 dark:border-white/40 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-foreground/50 shadow-sm backdrop-blur-md">
               Field Monitoring
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Lock, Mail, User, ArrowRight, Sparkles, ShieldCheck, Zap } from "lucide-react";
+import { Lock, Mail, User, ArrowRight, ShieldCheck, Zap } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -51,11 +51,11 @@ function LoginPage() {
         <div className="relative z-10 space-y-12">
           {/* Logo */}
           <div className="flex items-center gap-3 group cursor-default">
-            <div className="p-2.5 bg-primary/20 rounded-2xl border border-primary/30 shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform duration-500">
-              <Sparkles className="w-7 h-7 text-primary" />
-            </div>
-            <span className="text-3xl font-black tracking-tighter text-white">Attendly</span>
-          </div>
+             <div className="p-1 bg-primary/20 rounded-2xl border border-primary/30 shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform duration-500">
+                <img src="/icon-192.png" alt="Attendly" className="w-8 h-8" />
+             </div>
+             <span className="text-3xl font-black tracking-tighter text-white">Attendly</span>
+           </div>
 
           {/* Text Content */}
           <div className="max-w-xl space-y-6">
@@ -105,13 +105,13 @@ function LoginPage() {
         <div className="w-full max-w-[460px] relative z-10">
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-10">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-primary/10 rounded-xl border border-primary/20">
-                <Sparkles className="w-6 h-6 text-primary" />
-              </div>
-              <span className="text-2xl font-bold tracking-tight">Attendly</span>
-            </div>
-          </div>
+             <div className="flex items-center gap-2">
+               <div className="p-1 bg-primary/10 rounded-xl border border-primary/20">
+                 <img src="/icon-192.png" alt="Attendly" className="w-6 h-6" />
+               </div>
+               <span className="text-2xl font-bold tracking-tight">Attendly</span>
+             </div>
+           </div>
 
           {/* Form Card */}
           <div className="glass p-8 sm:p-10 rounded-[2.5rem] border border-border/50 shadow-2xl relative overflow-hidden group">

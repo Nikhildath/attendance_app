@@ -441,7 +441,7 @@ function PayrollPage() {
                   {fineDetails.length === 0 ? (
                       <div className="py-10 text-center text-xs text-muted-foreground">No late marks found.</div>
                   ) : fineDetails.map((f, i) => (
-                      <div key={i} className="flex items-center justify-between border-b border-white/5 p-4 last:border-0 hover:bg-accent/10">
+                      <div key={i} className="flex items-center justify-between border-b border-border/60 dark:border-white/5 p-4 last:border-0 hover:bg-accent/10">
                           <div>
                               <div className="font-bold text-sm">{f.profiles?.name}</div>
                               <div className="text-[10px] text-muted-foreground uppercase">{new Date(f.check_in || f.created_at).toLocaleDateString(undefined, {weekday:'short', day:'numeric', month:'short'})}</div>
@@ -470,7 +470,7 @@ function PayrollPage() {
                   ) : otDetails.map((r, i) => {
                       const duration = (new Date(r.check_out).getTime() - new Date(r.check_in).getTime()) / (3600 * 1000);
                       return (
-                          <div key={i} className="flex items-center justify-between border-b border-white/5 p-4 last:border-0 hover:bg-accent/10">
+                          <div key={i} className="flex items-center justify-between border-b border-border/60 dark:border-white/5 p-4 last:border-0 hover:bg-accent/10">
                               <div>
                                   <div className="font-bold text-sm">{r.profiles?.name}</div>
                                   <div className="text-[10px] text-muted-foreground uppercase">{new Date(r.created_at).toLocaleDateString(undefined, {weekday:'short', day:'numeric', month:'short'})}</div>

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   LayoutDashboard, Calendar, Clock, FileText, BarChart3, Settings, Users, Shield,
-  ChevronLeft, Wallet, CalendarRange, PartyPopper, Banknote, MapPinned, Zap, MessageSquare, Radar, Target, Sparkles
+  ChevronLeft, Wallet, CalendarRange, PartyPopper, Banknote, MapPinned, Zap, MessageSquare, Radar, Target
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -44,9 +44,9 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
       <div className="flex h-20 items-center gap-3 overflow-hidden border-b border-border/60 px-5 dark:border-white/[0.03]">
-        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] group transition-transform hover:scale-105">
+        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] group transition-transform hover:scale-105 overflow-hidden">
            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent animate-pulse" />
-           <Sparkles className="h-5 w-5 relative z-10" />
+           <img src="/icon-192.png" alt="Attendly" className="h-8 w-8 relative z-10 object-contain" />
         </div>
         {!collapsed && (
           <motion.div 
