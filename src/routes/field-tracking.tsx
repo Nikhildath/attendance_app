@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
+import { socketService } from "@/lib/socket-service";
+import type { StaffLocation } from "@/lib/socket-service";
 import { Avatar2D } from "@/components/common/Avatar2D";
 
 export const Route = createFileRoute("/field-tracking")({
@@ -122,6 +124,7 @@ function FieldTrackingPage() {
 
     loadData();
 
+    // Subscribe to Supabase realtime changes
     const channel = supabase.channel('tracking_changes_' + profile.id)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_tracking' }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadData())
@@ -130,6 +133,55 @@ function FieldTrackingPage() {
 
     realtimeSubRef.current = channel;
 
+    // Subscribe to Socket.io location updates
+    const unsubLocation = socketService.onStaffLocationUpdate((data: StaffLocation) => {
+      setStaff((prev) =>
+        prev.map((s) =>
+          s.id === data.id
+            ? {
+                ...s,
+                lat: data.lat,
+                lng: data.lng,
+                battery: data.battery,
+                speedKmh: data.speed,
+                task: data.task,
+                status: data.status,
+                lastUpdate: new Date(data.lastUpdate).toLocaleTimeString(),
+                accuracy: data.accuracy,
+              }
+            : s
+        )
+      );
+    });
+
+    const unsubLocations = socketService.onStaffLocations((data: StaffLocation[]) => {
+      setStaff((prev) =>
+        prev.map((s) => {
+          const update = data.find((d) => d.id === s.id);
+          if (!update) return s;
+          return {
+            ...s,
+            lat: update.lat,
+            lng: update.lng,
+            battery: update.battery,
+            speedKmh: update.speed,
+            task: update.task,
+            status: update.status,
+            lastUpdate: new Date(update.lastUpdate).toLocaleTimeString(),
+            accuracy: update.accuracy,
+          };
+        })
+      );
+    });
+
+    const unsubStatus = socketService.onStatusChange((data) => {
+      setStaff((prev) =>
+        prev.map((s) =>
+          s.id === data.userId ? { ...s, status: data.status } : s
+        )
+      );
+    });
+
     return () => {
       window.clearInterval(refreshInterval);
       setRealtimeConnected(false);
@@ -137,6 +189,9 @@ function FieldTrackingPage() {
         supabase.removeChannel(realtimeSubRef.current);
         realtimeSubRef.current = null;
       }
+      unsubLocation();
+      unsubLocations();
+      unsubStatus();
     };
   }, [profile?.id]);
 

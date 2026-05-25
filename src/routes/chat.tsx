@@ -12,11 +12,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { useAuth } from "@/lib/auth";
 import { requestNotificationPermission, showLocalNotification, subscribeToPush } from "@/lib/push";
+import { CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY, CHAT_STORAGE_BUCKET } from "@/lib/config";
 
-// --- CONFIGURATION ---
-const CHAT_SUPABASE_URL = "https://pcgoxzcllijqqvwaqqpl.supabase.co";
-const CHAT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjZ294emNsbGlqcXF2d2FxcXBsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MzIzNDIsImV4cCI6MjA5MzIwODM0Mn0.h3eQUd4KCr3C7ml4AOwyYQMm2tmYPhbIcfp7R6VzoZY";
-const STORAGE_BUCKET = 'chat-media';
+const STORAGE_BUCKET = CHAT_STORAGE_BUCKET || 'chat-media';
 const chatSupabase = createClient(CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY);
 
 // --- TYPES ---

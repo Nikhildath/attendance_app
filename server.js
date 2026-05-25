@@ -7,16 +7,25 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { createClient } from '@supabase/supabase-js';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import webpush from 'web-push';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  CHAT_SUPABASE_URL,
+  CHAT_SUPABASE_ANON_KEY,
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY,
+  VAPID_SUBJECT,
+  PORT,
+  FRONTEND_URL,
+} from './server-config.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
@@ -27,7 +36,7 @@ app.use(express.static(distPath));
 
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || '*',
+    origin: FRONTEND_URL || '*',
     credentials: true,
   },
   transports: ['websocket', 'polling'],
@@ -35,18 +44,18 @@ const io = new Server(httpServer, {
 
 // Initialize Supabase client
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL || '',
-  process.env.VITE_SUPABASE_ANON_KEY || ''
+  SUPABASE_URL || '',
+  SUPABASE_ANON_KEY || ''
 );
 
 const chatSupabase = createClient(
-  process.env.VITE_CHAT_SUPABASE_URL || '',
-  process.env.VITE_CHAT_SUPABASE_ANON_KEY || ''
+  CHAT_SUPABASE_URL || '',
+  CHAT_SUPABASE_ANON_KEY || ''
 );
 
-const vapidPublicKey = process.env.VITE_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY;
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:support@attendly.local';
+const vapidPublicKey = VAPID_PUBLIC_KEY;
+const vapidPrivateKey = VAPID_PRIVATE_KEY;
+const vapidSubject = VAPID_SUBJECT || 'mailto:support@attendly.local';
 
 if (vapidPublicKey && vapidPrivateKey) {
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
@@ -107,13 +116,12 @@ app.post('/api/push/send', async (req, res) => {
   }
 });
 
-// Wildcard route to serve index.html for SPA routing
-app.get('*', (req, res) => {
+// SPA fallback: serve index.html for any unmatched route
+app.use((req, res, next) => {
+  if (req.method !== 'GET') return next();
   const indexFile = path.join(distPath, 'index.html');
   res.sendFile(indexFile, (err) => {
-    if (err) {
-      res.status(404).send('Frontend build not found. Please run npm run build.');
-    }
+    if (err) next();
   });
 });
 
@@ -304,10 +312,9 @@ io.on('connection', (socket) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`Socket.io server running on port ${PORT}`);
-  console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  console.log(`Frontend URL: ${FRONTEND_URL || 'http://localhost:5173'}`);
 });
 
 // Graceful shutdown

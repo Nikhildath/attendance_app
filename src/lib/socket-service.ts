@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { SOCKET_URL as CONFIG_SOCKET_URL } from './config';
 
 export interface StaffLocation {
   id: string;
@@ -48,7 +49,7 @@ class SocketService {
       try {
         const socketUrl =
           url ||
-          import.meta.env.VITE_SOCKET_URL ||
+          CONFIG_SOCKET_URL ||
           (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
         
         console.log('🔌 Connecting to Socket server at:', socketUrl);

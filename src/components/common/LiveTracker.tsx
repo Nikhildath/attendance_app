@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { useBranch } from "@/lib/branch-context";
+import { socketService } from "@/lib/socket-service";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
 const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
@@ -82,11 +83,10 @@ export function LiveTracker() {
       }
     };
 
-    const sendLocationUpdate = async (coords?: { latitude: number; longitude: number; speed?: number; accuracy?: number }) => {
+    const sendLocationUpdate = (coords?: { latitude: number; longitude: number; speed?: number; accuracy?: number }) => {
       let lat = coords?.latitude;
       let lng = coords?.longitude;
       const hasGps = typeof lat === "number" && typeof lng === "number";
-      const batteryLevel = await getBatteryLevel();
 
       if (!hasGps) {
         if (branch?.lat && branch?.lng) {
@@ -98,44 +98,18 @@ export function LiveTracker() {
         }
       }
 
-      const payload = {
-        p_id: profile.id,
-        p_lat: lat,
-        p_lng: lng,
-        p_battery: batteryLevel,
-        p_speed_kmh: coords?.speed ?? 0,
-        p_accuracy: coords?.accuracy ?? 0,
-        p_current_task: `${profile.role} - ${hasGps ? "GPS Active" : "Using Branch Location"}`,
-        p_status: "active",
-        p_email: profile.email,
-        p_name: profile.name,
-      };
-
-      try {
-        const { data: rpcSuccess, error: rpcError } = await supabase.rpc("upsert_staff_tracking", payload);
-
-        if (!rpcError && rpcSuccess) {
-          return;
-        }
-
-        const { error } = await supabase.from("staff_tracking").upsert({
-          user_id: profile.id,
-          lat,
-          lng,
-          battery: batteryLevel,
-          speed_kmh: coords?.speed ?? 0,
+      getBatteryLevel().then((batteryLevel) => {
+        socketService.updateLocation({
+          userId: profile.id,
+          lat: lat ?? 0,
+          lng: lng ?? 0,
+          battery: batteryLevel ?? 0,
+          speed: coords?.speed ?? 0,
           accuracy: coords?.accuracy ?? 0,
-          current_task: `${profile.role} - ${hasGps ? "GPS Active" : "Using Branch Location"}`,
+          task: `${profile.role} - ${hasGps ? "GPS Active" : "Using Branch Location"}`,
           status: "active",
-          last_update: new Date().toISOString(),
-        }, { onConflict: "user_id" });
-
-        if (error) {
-          console.error("Supabase tracking error:", error.message, rpcError?.message ? `RPC: ${rpcError.message}` : "");
-        }
-      } catch (err) {
-        console.error("Tracking sync error:", err);
-      }
+        });
+      });
     };
 
     const startWebTracking = () => {

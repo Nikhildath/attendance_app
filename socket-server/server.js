@@ -7,16 +7,20 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { createClient } from '@supabase/supabase-js';
 import cors from 'cors';
-import dotenv from 'dotenv';
 
-dotenv.config();
+import {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  PORT,
+  FRONTEND_URL,
+} from '../server-config.js';
 
 const app = express();
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: FRONTEND_URL || 'http://localhost:5173',
     credentials: true,
   },
   transports: ['websocket', 'polling'],
@@ -24,8 +28,8 @@ const io = new Server(httpServer, {
 
 // Initialize Supabase client
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL || '',
-  process.env.VITE_SUPABASE_ANON_KEY || ''
+  SUPABASE_URL || '',
+  SUPABASE_ANON_KEY || ''
 );
 
 app.use(cors());
@@ -223,10 +227,9 @@ io.on('connection', (socket) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`Socket.io server running on port ${PORT}`);
-  console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  console.log(`Frontend URL: ${FRONTEND_URL || 'http://localhost:5173'}`);
 });
 
 // Graceful shutdown

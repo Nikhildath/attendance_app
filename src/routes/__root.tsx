@@ -83,6 +83,23 @@ function RootContent() {
     }
   }, [loading, user, profile, location.pathname, router]);
 
+  // Connect socket when authenticated
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    import("@/lib/socket-service").then(({ socketService }) => {
+      socketService.connect("", "", profile.id).catch((err) => {
+        console.warn("[Socket] Connection failed (non-critical):", err);
+      });
+    });
+
+    return () => {
+      import("@/lib/socket-service").then(({ socketService }) => {
+        socketService.disconnect();
+      });
+    };
+  }, [profile?.id]);
+
   // We removed the blocking loading screen to prevent the app from hanging.
   // The AuthProvider still handles auth state, but we allow the app to render immediately.
 

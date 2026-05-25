@@ -1,3 +1,6 @@
+# Standalone Socket.io Server (separate from frontend)
+# Deploy this if you want the socket server on its own Render service.
+# Uses server-config.js from the parent directory for all config.
 services:
   - type: web
     name: attendance-socket-server
@@ -7,11 +10,3 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3001
-      - key: VITE_SUPABASE_URL
-        sync: false
-      - key: VITE_SUPABASE_ANON_KEY
-        sync: false
-      - key: FRONTEND_URL
-        sync: false

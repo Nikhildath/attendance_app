@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { GOOGLE_CALENDAR_API_KEY } from "@/lib/config";
 
 type Holiday = {
   id: string;
@@ -85,8 +86,8 @@ export function HolidayManager({ branches }: { branches: any[] }) {
 
   // Fetch from Google Calendar and show as suggestions (admin picks which to add)
   const fetchSuggestions = async () => {
-    const apiKey = "AIzaSyDQRgaN0xdNTMwEJdLNoKHBYTOTuqhHzFE";
-    if (!apiKey) return toast.error("VITE_GOOGLE_CALENDAR_API_KEY is missing.");
+    if (!GOOGLE_CALENDAR_API_KEY) return toast.error("Google Calendar API key missing. Check GOOGLE_CALENDAR_API_KEY in src/lib/config.ts.");
+    const apiKey = GOOGLE_CALENDAR_API_KEY;
     if (!countryCode || countryCode.length !== 2) return toast.error("Enter a valid 2-letter country code.");
 
     const calendarId = GOOGLE_CALENDAR_IDS[countryCode] || GOOGLE_CALENDAR_IDS["IN"];
