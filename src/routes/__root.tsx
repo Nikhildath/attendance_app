@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { SettingsProvider } from "@/lib/settings-context";
 import { LiveTracker } from "@/components/common/LiveTracker";
+import { UpdateChecker } from "@/components/common/UpdateChecker";
 import { PWAInstallPrompt } from "@/components/common/PWAInstallPrompt";
 
 function NotFoundComponent() {
@@ -58,6 +59,7 @@ function RootComponent() {
           <BranchProvider>
             <RootContent />
             <LiveTracker />
+            <UpdateChecker />
             <Toaster />
           </BranchProvider>
         </SettingsProvider>

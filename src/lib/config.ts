@@ -18,12 +18,16 @@ export const CHAT_STORAGE_BUCKET = "chat-media";
 // --- Google Calendar ---
 export const GOOGLE_CALENDAR_API_KEY = "AIzaSyDQRgaN0xdNTMwEJdLNoKHBYTOTuqhHzFE";
 
-// --- Socket Server (on Render) ---
-// After deploying to Render, REPLACE this with your actual URL:
-//   https://attendance-socket-server.onrender.com
-// (Render gives you the URL after you create the web service)
-// The APK will use this URL to connect to the socket server.
-export const SOCKET_URL = "https://attendance-socket-server.onrender.com";
+// --- Socket Server ---
+// For local dev: set VITE_SOCKET_URL=http://localhost:3001 in .env.local
+// For production: defaults to the Render URL below
+export const SOCKET_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SOCKET_URL) ||
+  "https://attendance-socket-server.onrender.com";
+
+// --- Background Tracking API Key ---
+// Must match the API_KEY in server-config.js
+export const API_KEY = "attendly-bg-api-key-change-in-production";
 
 // --- VAPID Keys (Web Push) ---
 export const VAPID_PUBLIC_KEY = "BGIA1VAmBOZoD_m9TkevM4BZ3kpsjF70XSgKykZUas8TUTtIBQ7xONMJoEF89NkGMDXYJDTwhGW3Ca5xm_vmO4Q";

@@ -19,6 +19,11 @@ export const VAPID_PUBLIC_KEY = "BGIA1VAmBOZoD_m9TkevM4BZ3kpsjF70XSgKykZUas8TUTt
 export const VAPID_PRIVATE_KEY = "-W1i0bPn1o43k47g2HejC663M02mAbE85l4ssR-6hEo";
 export const VAPID_SUBJECT = "mailto:support@attendly.local";
 
+// --- Background Tracking API ---
+// Used by the native background geolocation plugin to POST locations via HTTP
+// when the app is running in the background or killed
+export const API_KEY = "attendly-bg-api-key-change-in-production";
+
 // --- Server ---
 export const PORT = 3001;
 export const FRONTEND_URL = "*";

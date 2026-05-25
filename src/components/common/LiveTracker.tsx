@@ -3,6 +3,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { useBranch } from "@/lib/branch-context";
 import { socketService } from "@/lib/socket-service";
+import { SOCKET_URL, API_KEY } from "@/lib/config";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
 const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
@@ -143,13 +144,22 @@ export function LiveTracker() {
 
     const startNativeTracking = async () => {
       try {
+        const serverUrl = SOCKET_URL?.replace(/\/+$/, '');
         const watcherId = await BackgroundGeolocation.addWatcher(
           {
-            backgroundMessage: "App is tracking your location in the background.",
-            backgroundTitle: "Tracking active",
+            backgroundMessage: "Attendance tracking active — updates sent every 30s until checkout.",
+            backgroundTitle: "Attendly Tracking",
             requestPermissions: true,
             stale: false,
             distanceFilter: 0,
+            foregroundService: true,
+            url: `${serverUrl}/api/location`,
+            headers: {
+              'x-api-key': API_KEY,
+              'x-user-id': profile.id,
+              'Content-Type': 'application/json',
+            },
+            method: 'POST',
           },
           (location: any, error: any) => {
             if (!isActive) return;
@@ -170,7 +180,6 @@ export function LiveTracker() {
         watcherIdRef.current = watcherId;
       } catch (err) {
         console.error("Failed to start native background tracking:", err);
-        // Fallback to web tracking if plugin fails
         startWebTracking();
       }
     };
@@ -192,7 +201,7 @@ export function LiveTracker() {
         watcherIdRef.current = null;
       }
     };
-  }, [profile?.id, profile?.role, branch?.id, branch?.lat, branch?.lng, profile?.email, profile?.name, isTracking]);
+  }, [profile?.id, profile?.role, branch?.id, branch?.lat, branch?.lng, isTracking]);
 
   return null;
 }

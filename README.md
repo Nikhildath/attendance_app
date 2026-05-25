@@ -10,6 +10,8 @@ Real-time attendance tracking, field staff geolocation, and team management with
 - **HR & Payroll** — Leave workflow, comp-offs, automated payslip generation with deductions.
 - **Team Chat** — WhatsApp-style messaging with images, files, voice notes, and 30-day auto-purge.
 - **Mobile APK** — Built with Capacitor, deployed via GitHub Actions. Push notifications included.
+- **In-App APK Updates** — Checks GitHub Releases on launch; prompts to download when a new version is published.
+- **Background Geolocation** — Native Android plugin continues tracking even when app is killed, POSTing to the server via HTTP with API key auth.
 
 ## Tech Stack
 
@@ -77,14 +79,18 @@ Then run your GitHub Action to build the APK. The app connects to your Render-ho
 ## How Live Location Works
 
 ```
-Phone GPS → LiveTracker component → Socket.io → Render server
-                                                     ↓
-                              Supabase (persist) + broadcast to admin panels
+Phone GPS → LiveTracker component ── Socket.io ──→ Render server (live)
+              (foreground)                           ↓
+                                  Supabase (persist via RPC) + broadcast
                                                      ↓
                               field-tracking.tsx updates map in real-time
+
+Phone GPS → BackgroundGeolocation plugin ── HTTP POST ──→ Render server
+              (background/killed)          /api/location    ↓ (API key auth)
+                                                   Supabase upsert + socket broadcast
 ```
 
-The app **only sends via Socket.io** (no direct Supabase writes from the device) — keeps your Supabase quota low.
+The app sends via **Socket.io** when in the foreground, and falls back to **HTTP POST** to `/api/location` (secured with `x-api-key` header) when the app is killed. Both paths bypass RLS using `SECURITY DEFINER` database RPCs (`lookup_profile_for_auth`, `upsert_staff_tracking`).
 
 ## Architecture
 
@@ -99,9 +105,13 @@ attendance-hub-pro/
 │   │   └── supabase.ts    # Supabase client (reads from config.ts)
 │   ├── components/
 │   │   └── common/
-│   │       └── LiveTracker.tsx  # GPS → Socket.io every 30s
+│   │       ├── LiveTracker.tsx   # GPS → Socket.io (foreground) / HTTP POST (background)
+│   │       └── UpdateChecker.tsx # Checks GitHub Releases for APK updates
 │   └── routes/
 │       └── field-tracking.tsx   # Live map with socket updates
+├── supabase/
+│   └── migrations/
+│       └── 20260525_create_bypass_rls_rpcs.sql  # RPCs for RLS bypass
 └── render.yaml            # Render blueprint (socket-only)
 ```
 
