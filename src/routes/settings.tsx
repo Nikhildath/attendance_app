@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { exportToCSV, parseCSV } from "@/lib/csv-utils";
 import { requestNotificationPermission, subscribeToPush } from "@/lib/push";
+import { NativeBiometric } from "@capgo/capacitor-native-biometric";
 import Cropper from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 
@@ -76,49 +77,39 @@ function SettingsPage() {
     setLoading(true);
     
     try {
-      const challenge = new Uint8Array(32);
-      window.crypto.getRandomValues(challenge);
-      
-      const userID = new TextEncoder().encode(profile.id);
-      
-      const options: CredentialCreationOptions = {
-        publicKey: {
-          challenge,
-          rp: { name: "Attendly Pro", id: window.location.hostname },
-          user: {
-            id: userID,
-            name: profile.email || profile.name || "user",
-            displayName: profile.name || "User"
-          },
-          pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-          timeout: 60000,
-          attestation: "none",
-          authenticatorSelection: {
-            userVerification: "required",
-            residentKey: "preferred",
-            requireResidentKey: false
-          }
-        }
-      };
+      let available;
+      try {
+        available = await NativeBiometric.isAvailable();
+      } catch {
+        toast.error("Device does not support biometrics.");
+        setLoading(false);
+        return;
+      }
 
-      const credential = await navigator.credentials.create(options) as PublicKeyCredential;
-      
-      if (credential) {
-        // Convert arrayBuffer id to base64
-        const rawId = Array.from(new Uint8Array(credential.rawId));
-        const idBase64 = btoa(String.fromCharCode.apply(null, rawId));
+      if (!available.isAvailable) {
+        toast.error("Device does not support biometrics.");
+        setLoading(false);
+        return;
+      }
 
-        const { error } = await supabase.from("profiles").update({ 
-          passkey_credential_id: idBase64, 
-          passkey_registered: true 
-        }).eq("id", profile.id);
-        
-        if (!error) {
-          toast.success("Passkey (Biometric) Identity Registered");
-          refreshProfile();
-        } else {
-          toast.error(error.message);
-        }
+      await NativeBiometric.setCredentials({
+        username: profile.email || profile.id,
+        password: profile.id,
+        server: "attendly-pro"
+      });
+
+      const idBase64 = btoa(profile.id);
+
+      const { error } = await supabase.from("profiles").update({ 
+        passkey_credential_id: idBase64, 
+        passkey_registered: true 
+      }).eq("id", profile.id);
+      
+      if (!error) {
+        toast.success("Passkey (Biometric) Identity Registered");
+        refreshProfile();
+      } else {
+        toast.error(error.message);
       }
     } catch (err: any) {
       console.error(err);

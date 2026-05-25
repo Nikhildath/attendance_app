@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { NativeBiometric } from "@capgo/capacitor-native-biometric";
 
 export const Route = createFileRoute("/attendance")({
   head: () => ({
@@ -111,26 +112,17 @@ function AttendancePage() {
     }
   }, [profile?.id]);
 
-  const verifyPasskey = async () => {
+  const verifyBiometric = async () => {
     try {
-      if (!profile?.passkey_credential_id) return false;
-      if (!window.PublicKeyCredential) return false;
-      const challenge = new Uint8Array(32);
-      window.crypto.getRandomValues(challenge);
-      const binaryId = Uint8Array.from(atob(profile.passkey_credential_id), c => c.charCodeAt(0));
-      
-      const options: CredentialRequestOptions = {
-        publicKey: {
-          challenge,
-          allowCredentials: [{ id: binaryId, type: "public-key" }],
-          userVerification: "required",
-          timeout: 60000
-        }
-      };
-      const credential = await navigator.credentials.get(options);
-      return !!credential;
+      await NativeBiometric.verifyIdentity({
+        reason: "Verify your identity to mark attendance",
+        title: "Biometric Verification",
+        subtitle: "Authenticate to continue",
+        description: "Place your finger on the sensor"
+      });
+      return true;
     } catch (err) {
-      console.error("Passkey verification failed:", err);
+      console.error("Biometric verification failed:", err);
       return false;
     }
   };
@@ -235,10 +227,8 @@ function AttendancePage() {
       });
     }, 50);
 
-    const supportsBiometrics = typeof window.PublicKeyCredential !== "undefined";
-
-    if (profile?.passkey_registered && supportsBiometrics) {
-      const verified = await verifyPasskey();
+    if (profile?.passkey_registered) {
+      const verified = await verifyBiometric();
       if (!verified) {
         toast.error("Biometric Verification Failed");
         setState("idle");
@@ -256,52 +246,41 @@ function AttendancePage() {
     if (!profile?.id) return;
     setLoading(true);
     try {
-      if (!window.PublicKeyCredential) {
+      let available;
+      try {
+        available = await NativeBiometric.isAvailable();
+      } catch {
         toast.error("Device does not support biometrics. You can still punch attendance without it.");
         setLoading(false);
         return;
       }
 
-      const challenge = new Uint8Array(32);
-      window.crypto.getRandomValues(challenge);
+      if (!available.isAvailable) {
+        toast.error("Device does not support biometrics. You can still punch attendance without it.");
+        setLoading(false);
+        return;
+      }
 
-      const credential = await navigator.credentials.create({
-        publicKey: {
-          challenge,
-          rp: { name: "Attendly Pro", id: window.location.hostname },
-          user: {
-            id: Uint8Array.from((profile.id).replace(/-/g, ''), c => c.charCodeAt(0)),
-            name: profile.email || "user",
-            displayName: profile.name || "User"
-          },
-          pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-          authenticatorSelection: { 
-            userVerification: "required",
-            residentKey: "preferred"
-          },
-          timeout: 60000
-        }
+      await NativeBiometric.setCredentials({
+        username: profile.email || profile.id,
+        password: profile.id,
+        server: "attendly-pro"
       });
 
-      if (credential) {
-        const { error } = await supabase
-          .from("profiles")
-          .update({ 
-            passkey_registered: true,
-            passkey_credential_id: btoa(String.fromCharCode(...new Uint8Array((credential as any).rawId)))
-          })
-          .eq("id", profile.id);
+      const credentialId = btoa(profile.id);
 
-        if (error) throw error;
-        toast.success("Biometrics registered successfully!");
-      }
+      const { error } = await supabase
+        .from("profiles")
+        .update({ 
+          passkey_registered: true,
+          passkey_credential_id: credentialId
+        })
+        .eq("id", profile.id);
+
+      if (error) throw error;
+      toast.success("Biometrics registered successfully!");
     } catch (err: any) {
-      const msg = err.message || "";
-      if (msg.includes("not supported") || msg.includes("not a secure context") || msg.includes("PublicKeyCredential")) {
-        toast.error("Biometrics not available on this device. You can still punch attendance.");
-      } else {
-        toast.error(msg || "Biometric registration failed.");
-      }
+      toast.error(err.message || "Biometric registration failed.");
     } finally {
       setLoading(false);
     }
