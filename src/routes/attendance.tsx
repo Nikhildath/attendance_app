@@ -114,6 +114,7 @@ function AttendancePage() {
   const verifyPasskey = async () => {
     try {
       if (!profile?.passkey_credential_id) return false;
+      if (!window.PublicKeyCredential) return false;
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
       const binaryId = Uint8Array.from(atob(profile.passkey_credential_id), c => c.charCodeAt(0));
@@ -221,7 +222,6 @@ function AttendancePage() {
   const handlePunch = async () => {
     if (!profile) return;
     
-    // Punch logic (both in and out require biometrics)
     setState("scanning");
     setScanProgress(0);
     
@@ -235,22 +235,21 @@ function AttendancePage() {
       });
     }, 50);
 
-    if (!profile?.passkey_registered) {
-      toast.error("Security Requirement: Please setup your device identity (biometrics) first.");
-      setState("idle");
-      return;
+    const supportsBiometrics = typeof window.PublicKeyCredential !== "undefined";
+
+    if (profile?.passkey_registered && supportsBiometrics) {
+      const verified = await verifyPasskey();
+      if (!verified) {
+        toast.error("Biometric Verification Failed");
+        setState("idle");
+        return;
+      }
     }
 
-    const verified = await verifyPasskey();
-    if (verified) {
-      setTimeout(() => {
-        executePunch();
-        setState("idle");
-      }, 1000);
-    } else {
-      toast.error("Biometric Verification Failed");
+    setTimeout(() => {
+      executePunch();
       setState("idle");
-    }
+    }, 1000);
   };
 
   const registerBiometrics = async () => {
@@ -258,7 +257,9 @@ function AttendancePage() {
     setLoading(true);
     try {
       if (!window.PublicKeyCredential) {
-        throw new Error("Biometric hardware not detected on this device.");
+        toast.error("Device does not support biometrics. You can still punch attendance without it.");
+        setLoading(false);
+        return;
       }
 
       const challenge = new Uint8Array(32);
@@ -295,7 +296,12 @@ function AttendancePage() {
         toast.success("Biometrics registered successfully!");
       }
     } catch (err: any) {
-      toast.error(err.message || "Biometric registration failed.");
+      const msg = err.message || "";
+      if (msg.includes("not supported") || msg.includes("not a secure context") || msg.includes("PublicKeyCredential")) {
+        toast.error("Biometrics not available on this device. You can still punch attendance.");
+      } else {
+        toast.error(msg || "Biometric registration failed.");
+      }
     } finally {
       setLoading(false);
     }
