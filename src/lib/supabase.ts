@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = "https://vmtqwpisvhbjzparejil.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtdHF3cGlzdmhianpwYXJlamlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1MzE5NzUsImV4cCI6MjA5MzEwNzk3NX0.NTiA1s3OBk_4D7eUyBv7EHtF0N7s6Gjqaj93jIBrm5A";
 
 const isMissingVars = !supabaseUrl || !supabaseAnonKey || supabaseUrl === "https://placeholder-project.supabase.co";
 

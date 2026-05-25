@@ -14,9 +14,9 @@ import { useAuth } from "@/lib/auth";
 import { requestNotificationPermission, showLocalNotification, subscribeToPush } from "@/lib/push";
 
 // --- CONFIGURATION ---
-const CHAT_SUPABASE_URL = import.meta.env.VITE_CHAT_SUPABASE_URL;
-const CHAT_SUPABASE_ANON_KEY = import.meta.env.VITE_CHAT_SUPABASE_ANON_KEY;
-const STORAGE_BUCKET = import.meta.env.VITE_CHAT_STORAGE_BUCKET || 'chat-media';
+const CHAT_SUPABASE_URL = "https://pcgoxzcllijqqvwaqqpl.supabase.co";
+const CHAT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjZ294emNsbGlqcXF2d2FxcXBsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MzIzNDIsImV4cCI6MjA5MzIwODM0Mn0.h3eQUd4KCr3C7ml4AOwyYQMm2tmYPhbIcfp7R6VzoZY";
+const STORAGE_BUCKET = 'chat-media';
 const chatSupabase = createClient(CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY);
 
 // --- TYPES ---

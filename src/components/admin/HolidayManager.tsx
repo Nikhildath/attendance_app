@@ -85,7 +85,7 @@ export function HolidayManager({ branches }: { branches: any[] }) {
 
   // Fetch from Google Calendar and show as suggestions (admin picks which to add)
   const fetchSuggestions = async () => {
-    const apiKey = import.meta.env.VITE_GOOGLE_CALENDAR_API_KEY;
+    const apiKey = "AIzaSyDQRgaN0xdNTMwEJdLNoKHBYTOTuqhHzFE";
     if (!apiKey) return toast.error("VITE_GOOGLE_CALENDAR_API_KEY is missing.");
     if (!countryCode || countryCode.length !== 2) return toast.error("Enter a valid 2-letter country code.");
 
