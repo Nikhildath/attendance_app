@@ -49,6 +49,10 @@ if (vapidPublicKey && vapidPrivateKey) {
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', service: 'Socket.io live location server', port: PORT });
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Socket.io server is running' });
 });
