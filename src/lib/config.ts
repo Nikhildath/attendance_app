@@ -23,7 +23,7 @@ export const GOOGLE_CALENDAR_API_KEY = "AIzaSyDQRgaN0xdNTMwEJdLNoKHBYTOTuqhHzFE"
 //   https://attendance-socket-server.onrender.com
 // (Render gives you the URL after you create the web service)
 // The APK will use this URL to connect to the socket server.
-export const SOCKET_URL = "REPLACE_ME_AFTER_RENDER_DEPLOY";
+export const SOCKET_URL = "https://attendance-socket-server.onrender.com";
 
 // --- VAPID Keys (Web Push) ---
 export const VAPID_PUBLIC_KEY = "BGIA1VAmBOZoD_m9TkevM4BZ3kpsjF70XSgKykZUas8TUTtIBQ7xONMJoEF89NkGMDXYJDTwhGW3Ca5xm_vmO4Q";
