@@ -9,9 +9,6 @@ import { createClient } from '@supabase/supabase-js';
 import cors from 'cors';
 import webpush from 'web-push';
 
-import path from 'path';
-import { fileURLToPath } from 'url';
-
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
@@ -24,15 +21,8 @@ import {
   FRONTEND_URL,
 } from './server-config.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
 const httpServer = createServer(app);
-
-// Serve static files from the 'dist' directory if it exists
-const distPath = path.join(__dirname, 'dist');
-app.use(express.static(distPath));
 
 const io = new Server(httpServer, {
   cors: {
@@ -42,16 +32,9 @@ const io = new Server(httpServer, {
   transports: ['websocket', 'polling'],
 });
 
-// Initialize Supabase client
-const supabase = createClient(
-  SUPABASE_URL || '',
-  SUPABASE_ANON_KEY || ''
-);
+const supabase = createClient(SUPABASE_URL || '', SUPABASE_ANON_KEY || '');
 
-const chatSupabase = createClient(
-  CHAT_SUPABASE_URL || '',
-  CHAT_SUPABASE_ANON_KEY || ''
-);
+const chatSupabase = createClient(CHAT_SUPABASE_URL || '', CHAT_SUPABASE_ANON_KEY || '');
 
 const vapidPublicKey = VAPID_PUBLIC_KEY;
 const vapidPrivateKey = VAPID_PRIVATE_KEY;
@@ -66,38 +49,31 @@ if (vapidPublicKey && vapidPrivateKey) {
 app.use(cors());
 app.use(express.json());
 
-// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Socket.io server is running' });
 });
 
 app.post('/api/push/send', async (req, res) => {
   const { userId, payload } = req.body || {};
-
   if (!userId || !payload?.title || !payload?.body) {
     return res.status(400).json({ error: 'userId, payload.title and payload.body are required.' });
   }
-
   if (!vapidPublicKey || !vapidPrivateKey) {
     return res.status(503).json({ error: 'Push notifications are not configured on the server.' });
   }
-
   try {
     const { data: subscriptionRow, error } = await chatSupabase
       .from('push_subscriptions')
       .select('subscription')
       .eq('user_id', userId)
       .maybeSingle();
-
     if (error) {
       console.error('[Push] Failed to fetch subscription:', error);
       return res.status(500).json({ error: 'Failed to load push subscription.' });
     }
-
     if (!subscriptionRow?.subscription) {
       return res.status(404).json({ error: 'No push subscription found for this user.' });
     }
-
     await webpush.sendNotification(
       subscriptionRow.subscription,
       JSON.stringify({
@@ -108,21 +84,11 @@ app.post('/api/push/send', async (req, res) => {
         data: payload.data || { url: '/chat' },
       })
     );
-
     return res.json({ ok: true });
   } catch (error) {
     console.error('[Push] Delivery failed:', error);
     return res.status(500).json({ error: error?.body || error?.message || 'Push delivery failed.' });
   }
-});
-
-// SPA fallback: serve index.html for any unmatched route
-app.use((req, res, next) => {
-  if (req.method !== 'GET') return next();
-  const indexFile = path.join(distPath, 'index.html');
-  res.sendFile(indexFile, (err) => {
-    if (err) next();
-  });
 });
 
 // Store connected users and their locations

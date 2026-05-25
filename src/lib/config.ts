@@ -18,12 +18,12 @@ export const CHAT_STORAGE_BUCKET = "chat-media";
 // --- Google Calendar ---
 export const GOOGLE_CALENDAR_API_KEY = "AIzaSyDQRgaN0xdNTMwEJdLNoKHBYTOTuqhHzFE";
 
-// --- Socket Server ---
-// Leave empty to auto-detect (uses window.location.origin in browser)
-// If deploying socket server SEPARATELY on Render, set this to:
-//   https://your-socket-server.onrender.com
-// For combined deployment (frontend + socket on same URL), leave empty.
-export const SOCKET_URL = "";
+// --- Socket Server (on Render) ---
+// After deploying to Render, REPLACE this with your actual URL:
+//   https://attendance-socket-server.onrender.com
+// (Render gives you the URL after you create the web service)
+// The APK will use this URL to connect to the socket server.
+export const SOCKET_URL = "REPLACE_ME_AFTER_RENDER_DEPLOY";
 
 // --- VAPID Keys (Web Push) ---
 export const VAPID_PUBLIC_KEY = "BGIA1VAmBOZoD_m9TkevM4BZ3kpsjF70XSgKykZUas8TUTtIBQ7xONMJoEF89NkGMDXYJDTwhGW3Ca5xm_vmO4Q";

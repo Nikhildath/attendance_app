@@ -49,7 +49,7 @@ class SocketService {
       try {
         const socketUrl =
           url ||
-          CONFIG_SOCKET_URL ||
+          (CONFIG_SOCKET_URL?.startsWith('http') ? CONFIG_SOCKET_URL : '') ||
           (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
         
         console.log('🔌 Connecting to Socket server at:', socketUrl);

@@ -1,11 +1,10 @@
+# Socket.io server only (no frontend) — deploy this on Render Free
 services:
   - type: web
-    name: attendly-pro
+    name: attendance-socket-server
     runtime: node
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
+    buildCommand: npm install
+    startCommand: node server.js
     envVars:
       - key: NODE_VERSION
         value: 20
-      - key: NODE_ENV
-        value: production
