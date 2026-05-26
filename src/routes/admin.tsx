@@ -798,14 +798,14 @@ function AnnouncementManager() {
 
 function QuickActionCard({ to, title, desc, icon: Icon, tone }: { to: string; title: string; desc: string; icon: any; tone: string }) {
   return (
-    <Link to={to} className="group relative overflow-hidden rounded-[2rem] border bg-[#0a0a0a] p-6 transition-all hover:border-primary/50 hover:shadow-elegant">
+    <Link to={to} className="group relative overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-6 transition-all hover:border-primary/50 hover:shadow-glow">
       <div className="relative z-10 flex flex-col gap-4">
         <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl", tone)}>
           <Icon className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="text-lg font-black italic uppercase tracking-tighter text-white">{title}</h3>
-          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{desc}</p>
+          <h3 className="text-lg font-black italic uppercase tracking-tighter text-foreground">{title}</h3>
+          <p className="mt-1 text-xs text-foreground/60 leading-relaxed">{desc}</p>
         </div>
         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0">
           Initialize System <Plus className="h-3 w-3" />
