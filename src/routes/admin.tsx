@@ -451,16 +451,33 @@ function AdminPage() {
                 <div key={u.id} className="rounded-2xl border border-border/50 bg-background/50 p-4 space-y-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Avatar2D name={u.name} size={40} src={u.avatar_url} />
+                      <Avatar2D name={drafts[u.id]?.name ?? u.name} size={40} src={u.avatar_url} />
                       <div>
-                        <h4 className="font-bold text-sm">{u.name}</h4>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{u.role}</p>
+                        <Input 
+                          className="h-7 text-sm font-bold px-1 border-0 bg-transparent" 
+                          value={drafts[u.id]?.name ?? u.name} 
+                          onChange={e => setDraft(u.id, 'name', e.target.value)}
+                          onBlur={() => flushDraft(u.id)}
+                        />
+                        <p className="text-[10px] text-muted-foreground">{u.email}</p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => removeUser(u.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => removeUser(u.id)} className="text-destructive shrink-0"><Trash2 className="h-4 w-4" /></Button>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="space-y-1">
+                      <Label className="text-[9px] uppercase text-muted-foreground">Role</Label>
+                      <select 
+                        className="w-full h-8 rounded-lg border bg-background px-2 text-[10px]" 
+                        value={u.role} 
+                        onChange={e => updateProfile(u.id, { role: e.target.value as Role })}
+                      >
+                        <option value="Employee">Employee</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Admin">Admin</option>
+                      </select>
+                    </div>
                     <div className="space-y-1">
                       <Label className="text-[9px] uppercase text-muted-foreground">Branch</Label>
                       <select 
@@ -475,6 +492,15 @@ function AdminPage() {
                       </select>
                     </div>
                     <div className="space-y-1">
+                      <Label className="text-[9px] uppercase text-muted-foreground">Password</Label>
+                      <Input 
+                        className="h-8 text-[10px]" 
+                        value={drafts[u.id]?.password ?? u.password ?? ""} 
+                        onChange={e => setDraft(u.id, 'password', e.target.value)}
+                        onBlur={() => flushDraft(u.id)}
+                      />
+                    </div>
+                    <div className="space-y-1">
                       <Label className="text-[9px] uppercase text-muted-foreground">Department</Label>
                       <Input 
                         className="h-8 text-[10px]" 
@@ -484,11 +510,12 @@ function AdminPage() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[9px] uppercase text-muted-foreground">Password</Label>
+                      <Label className="text-[9px] uppercase text-muted-foreground">DOB</Label>
                       <Input 
+                        type="date"
                         className="h-8 text-[10px]" 
-                        value={drafts[u.id]?.password ?? u.password ?? ""} 
-                        onChange={e => setDraft(u.id, 'password', e.target.value)}
+                        value={drafts[u.id]?.dob ?? u.dob ?? ""} 
+                        onChange={e => setDraft(u.id, 'dob', e.target.value)}
                         onBlur={() => flushDraft(u.id)}
                       />
                     </div>
