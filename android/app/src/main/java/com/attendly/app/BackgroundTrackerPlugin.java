@@ -1,7 +1,9 @@
 package com.attendly.app;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
 
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -54,6 +56,25 @@ public class BackgroundTrackerPlugin extends Plugin {
             call.resolve();
         } catch (Exception e) {
             call.reject("Failed to stop background tracker: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void openBatteryOptimizationSettings(PluginCall call) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+            getActivity().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            // Fallback: open general battery optimization settings
+            try {
+                Intent fallback = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                getActivity().startActivity(fallback);
+                call.resolve();
+            } catch (Exception e2) {
+                call.reject("Failed to open battery optimization settings: " + e2.getMessage());
+            }
         }
     }
 }

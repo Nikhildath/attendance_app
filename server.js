@@ -8,6 +8,10 @@ import { Server } from 'socket.io';
 import { createClient } from '@supabase/supabase-js';
 import cors from 'cors';
 import webpush from 'web-push';
+import rateLimit from 'express-rate-limit';
+import admin from 'firebase-admin';
+import { readFileSync, existsSync } from 'fs';
+import { resolve } from 'path';
 
 import {
   SUPABASE_URL,
@@ -47,6 +51,30 @@ if (vapidPublicKey && vapidPrivateKey) {
   console.warn('[Push] VAPID keys are not configured. Web push delivery is disabled.');
 }
 
+// Firebase Admin SDK (optional — enables FCM for native push when app is killed)
+let fcmAvailable = false;
+try {
+  const fcmKeyPath = resolve('firebase-service-account.json');
+  if (existsSync(fcmKeyPath)) {
+    const serviceAccount = JSON.parse(readFileSync(fcmKeyPath, 'utf8'));
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    fcmAvailable = true;
+    console.log('[FCM] Firebase Admin initialized. Native push enabled.');
+  } else {
+    console.warn('[FCM] firebase-service-account.json not found. Native FCM push disabled.');
+  }
+} catch (e) {
+  console.warn('[FCM] Failed to initialize Firebase Admin:', e.message);
+}
+
+// Rate limiter for background location endpoint
+const locationLimiter = rateLimit({
+  windowMs: 30 * 1000,
+  max: 5,
+  keyGenerator: (req) => req.headers['x-user-id'] || req.body?.userId || req.ip,
+  message: { error: 'Too many location updates. Please slow down.' },
+});
+
 app.use(cors());
 app.use(express.json());
 
@@ -56,6 +84,26 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Socket.io server is running' });
+});
+
+app.post('/api/push/register-fcm', async (req, res) => {
+  const { userId, token } = req.body || {};
+  if (!userId || !token) {
+    return res.status(400).json({ error: 'userId and token are required.' });
+  }
+  try {
+    const { error } = await chatSupabase
+      .from('push_subscriptions')
+      .upsert({ user_id: userId, fcm_token: token, updated_at: new Date().toISOString() });
+    if (error) {
+      console.error('[FCM] Failed to save token:', error.message);
+      return res.status(500).json({ error: 'Failed to save FCM token.' });
+    }
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('[FCM] Registration error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/push/send', async (req, res) => {
@@ -69,27 +117,55 @@ app.post('/api/push/send', async (req, res) => {
   try {
     const { data: subscriptionRow, error } = await chatSupabase
       .from('push_subscriptions')
-      .select('subscription')
+      .select('subscription, fcm_token')
       .eq('user_id', userId)
       .maybeSingle();
     if (error) {
       console.error('[Push] Failed to fetch subscription:', error);
       return res.status(500).json({ error: 'Failed to load push subscription.' });
     }
-    if (!subscriptionRow?.subscription) {
-      return res.status(404).json({ error: 'No push subscription found for this user.' });
+
+    let webPushSent = false;
+    let fcmSent = false;
+
+    // Send via Web Push (for browser/foreground delivery)
+    if (subscriptionRow?.subscription) {
+      try {
+        await webpush.sendNotification(
+          subscriptionRow.subscription,
+          JSON.stringify({
+            title: payload.title,
+            body: payload.body,
+            icon: payload.icon || '/icon-192.png',
+            badge: payload.badge || '/icon-192.png',
+            data: payload.data || { url: '/chat' },
+          })
+        );
+        webPushSent = true;
+      } catch (webError) {
+        console.warn('[Push] Web push failed:', webError.message);
+      }
     }
-    await webpush.sendNotification(
-      subscriptionRow.subscription,
-      JSON.stringify({
-        title: payload.title,
-        body: payload.body,
-        icon: payload.icon || '/icon-192.png',
-        badge: payload.badge || '/icon-192.png',
-        data: payload.data || { url: '/chat' },
-      })
-    );
-    return res.json({ ok: true });
+
+    // Send via FCM (for native delivery when app is killed)
+    if (fcmAvailable && subscriptionRow?.fcm_token) {
+      try {
+        await admin.messaging().send({
+          token: subscriptionRow.fcm_token,
+          notification: { title: payload.title, body: payload.body },
+          data: { url: JSON.stringify(payload.data?.url || '/chat') },
+        });
+        fcmSent = true;
+      } catch (fcmError) {
+        console.warn('[FCM] Send failed:', fcmError.message);
+      }
+    }
+
+    if (!webPushSent && !fcmSent) {
+      return res.status(404).json({ error: 'No active push channel found for this user.' });
+    }
+
+    return res.json({ ok: true, webPushSent, fcmSent });
   } catch (error) {
     console.error('[Push] Delivery failed:', error);
     return res.status(500).json({ error: error?.body || error?.message || 'Push delivery failed.' });
@@ -97,7 +173,7 @@ app.post('/api/push/send', async (req, res) => {
 });
 
 // Background location update endpoint (used by native geolocation plugin when app is in background/killed)
-app.post('/api/location', async (req, res) => {
+app.post('/api/location', locationLimiter, async (req, res) => {
   try {
     const apiKey = req.headers['x-api-key'];
     if (apiKey !== API_KEY) {

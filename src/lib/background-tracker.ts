@@ -8,6 +8,7 @@ interface BackgroundTrackerPlugin {
     minPostIntervalMs?: number;
   }): Promise<void>;
   stop(): Promise<void>;
+  openBatteryOptimizationSettings(): Promise<void>;
 }
 
 const BackgroundTracker = registerPlugin<BackgroundTrackerPlugin>("BackgroundTracker");
@@ -38,5 +39,15 @@ export async function stopBackgroundTracker(): Promise<void> {
     await BackgroundTracker.stop();
   } catch (err) {
     console.error("[BackgroundTracker] Failed to stop:", err);
+  }
+}
+
+export async function requestBatteryOptimizationExemption(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+
+  try {
+    await BackgroundTracker.openBatteryOptimizationSettings();
+  } catch (err) {
+    console.warn("[BackgroundTracker] Failed to open battery optimization settings:", err);
   }
 }

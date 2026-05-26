@@ -228,9 +228,21 @@ function AttendancePage() {
     }, 50);
 
     if (profile?.passkey_registered) {
+      let bioAvailable = false;
+      try {
+        const avail = await NativeBiometric.isAvailable();
+        bioAvailable = avail.isAvailable;
+      } catch {}
+
+      if (!bioAvailable) {
+        toast.error("This device does not support fingerprint sensors. Your passkey was registered on another device.");
+        setState("idle");
+        return;
+      }
+
       const verified = await verifyBiometric();
       if (!verified) {
-        toast.error("Biometric Verification Failed");
+        toast.error("Biometric verification failed. Please try again.");
         setState("idle");
         return;
       }

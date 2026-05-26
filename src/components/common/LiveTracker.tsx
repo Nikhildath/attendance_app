@@ -5,11 +5,22 @@ import { useBranch } from "@/lib/branch-context";
 import { socketService } from "@/lib/socket-service";
 import { SOCKET_URL, API_KEY } from "@/lib/config";
 import { Capacitor, registerPlugin } from "@capacitor/core";
-import { startBackgroundTracker, stopBackgroundTracker } from "@/lib/background-tracker";
+import { startBackgroundTracker, stopBackgroundTracker, requestBatteryOptimizationExemption } from "@/lib/background-tracker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
 
 const TRACKING_INTERVAL_MS = 30_000;
+const BATTERY_PROMPT_KEY = "battery_opt_prompted";
 
 type BatteryManagerLike = {
   level: number;
@@ -21,6 +32,7 @@ export function LiveTracker() {
   const intervalRef = useRef<number | null>(null);
   const watcherIdRef = useRef<string | null>(null);
   const [isTracking, setIsTracking] = useState(false);
+  const [showBatteryDialog, setShowBatteryDialog] = useState(false);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -192,6 +204,10 @@ export function LiveTracker() {
         apiKey: API_KEY,
         serverUrl: SOCKET_URL,
       });
+      // Show battery optimization prompt once per device
+      if (!localStorage.getItem(BATTERY_PROMPT_KEY)) {
+        setShowBatteryDialog(true);
+      }
     } else {
       startWebTracking();
     }
@@ -212,5 +228,29 @@ export function LiveTracker() {
     };
   }, [profile?.id, profile?.role, branch?.id, branch?.lat, branch?.lng, isTracking]);
 
-  return null;
+  return (
+    <AlertDialog open={showBatteryDialog} onOpenChange={setShowBatteryDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Battery Optimization</AlertDialogTitle>
+          <AlertDialogDescription>
+            To keep location tracking reliable when the app is closed, please disable battery optimization for Attendly on the next screen.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => localStorage.setItem(BATTERY_PROMPT_KEY, "dismissed")}>
+            Skip
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              localStorage.setItem(BATTERY_PROMPT_KEY, "opened");
+              requestBatteryOptimizationExemption();
+            }}
+          >
+            Open Settings
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }

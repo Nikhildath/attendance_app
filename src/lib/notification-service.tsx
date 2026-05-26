@@ -1,7 +1,11 @@
 import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { Capacitor } from "@capacitor/core";
+import { registerPlugin } from "@capacitor/core";
 import { CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY } from "@/lib/config";
 import { requestNotificationPermission, showLocalNotification, subscribeToPush } from "@/lib/push";
+
+const PushNotifications = registerPlugin<any>("PushNotifications");
 
 interface NotificationServiceContext {
   notifyDashboard: (title: string, body: string) => void;
@@ -21,6 +25,35 @@ const chatSupabase =
     ? createClient(CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY)
     : null;
 
+async function registerFCM(userId: string) {
+  try {
+    const perm = await PushNotifications.checkPermissions();
+    if (perm.receive === "prompt") {
+      await PushNotifications.requestPermissions();
+    }
+    await PushNotifications.register();
+
+    PushNotifications.addListener("registration", (token: any) => {
+      const fcmToken = token.value as string;
+      fetch("/api/push/register-fcm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, token: fcmToken }),
+      }).catch((err) => console.warn("[FCM] Token registration failed:", err));
+    });
+
+    PushNotifications.addListener("pushNotificationReceived", (notification: any) => {
+      showLocalNotification({
+        title: notification.title || "Attendly",
+        body: notification.body || "",
+        data: notification.data || {},
+      });
+    });
+  } catch (err) {
+    console.warn("[FCM] Native push registration failed:", err);
+  }
+}
+
 export function NotificationProvider({ userId, children }: { userId: string | undefined; children: ReactNode }) {
   const profileIdRef = useRef(userId);
   const suppressChatRef = useRef(false);
@@ -38,6 +71,11 @@ export function NotificationProvider({ userId, children }: { userId: string | un
 
     requestNotificationPermission().catch(() => {});
     subscribeToPush(userId).catch(() => {});
+
+    // Register for native FCM push notifications (Capacitor Android only)
+    if (Capacitor.isNativePlatform()) {
+      registerFCM(userId);
+    }
 
     const channel = chatSupabase
       .channel("global-chat-notifications")

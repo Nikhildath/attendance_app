@@ -17,6 +17,8 @@ import { requestNotificationPermission, subscribeToPush } from "@/lib/push";
 import { NativeBiometric } from "@capgo/capacitor-native-biometric";
 import Cropper from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
+import { Capacitor } from "@capacitor/core";
+import { requestBatteryOptimizationExemption } from "@/lib/background-tracker";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -518,8 +520,25 @@ function SettingsPage() {
                         Enable
                       </button>
                    </div>
-                   <ToggleRow label="Weekly Attendance Summary" storageKey="pref_weekly_summary" />
-                   <ToggleRow label="Leave Approval Alerts" defaultChecked storageKey="pref_leave_alerts" />
+                    {Capacitor.isNativePlatform() && (
+                      <div className="p-6 rounded-3xl bg-muted/20 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.03] flex items-center justify-between">
+                        <div className="flex items-center gap-5">
+                          <div className="p-3 rounded-xl bg-muted/30 dark:bg-white/5 text-muted-foreground dark:text-white/40"><Zap className="w-5 h-5" /></div>
+                          <div>
+                            <h4 className="text-sm font-bold uppercase tracking-tight text-foreground/80 dark:text-white/80">Battery Optimization</h4>
+                            <p className="text-[10px] font-medium text-muted-foreground/60 dark:text-white/20 uppercase tracking-widest mt-1">Allow reliable background location tracking</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => requestBatteryOptimizationExemption()}
+                          className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all"
+                        >
+                          Whitelist
+                        </button>
+                      </div>
+                    )}
+                    <ToggleRow label="Weekly Attendance Summary" storageKey="pref_weekly_summary" />
+                    <ToggleRow label="Leave Approval Alerts" defaultChecked storageKey="pref_leave_alerts" />
                 </div>
 
                 {/* Hard Reset */}

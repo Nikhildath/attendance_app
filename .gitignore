@@ -35,3 +35,7 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Firebase (not committed - decoded from secrets in CI)
+firebase-service-account.json
+android/app/google-services.json

@@ -1,23 +1,33 @@
 -- ============================================================
--- ATTENDLY PREMIUM CHAT SYSTEM SCHEMA
--- Run this on your secondary CHAT Supabase project
+-- ATTENDLY CHAT SYSTEM — COMPLETE DATABASE SCHEMA
 -- Target Project: pcgoxzcllijqqvwaqqpl
+-- Use this to set up a NEW Supabase project OR upgrade an existing one.
 -- ============================================================
 
+-- ============================================================
 -- 1. EXTENSIONS
+-- ============================================================
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- ============================================================
 -- 2. TABLES
+-- ============================================================
 
 -- Profiles (Linked to main app User IDs)
 CREATE TABLE IF NOT EXISTS public.profiles (
-    id uuid PRIMARY KEY, -- Matches main app profile.id
-    username text UNIQUE NOT NULL,
+    id uuid PRIMARY KEY,
+    username text,
     avatar_url text,
-    full_name text, -- Stores role (e.g., 'Admin', 'Employee')
+    full_name text,
+    is_admin boolean DEFAULT false,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );
+
+-- NOTE: username UNIQUE constraint was intentionally removed
+-- because the same main-app user can get different anonymous
+-- auth IDs across sessions, causing duplicate key errors.
 
 -- Chat Rooms / Channels
 CREATE TABLE IF NOT EXISTS public.rooms (
@@ -34,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.messages (
     user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
     content text,
     type text DEFAULT 'text' CHECK (type IN ('text', 'image', 'video', 'audio', 'file')),
-    file_url text, -- For Base64 or direct URLs
+    file_url text,
     created_at timestamptz DEFAULT now()
 );
 
@@ -43,11 +53,43 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
     subscription jsonb NOT NULL,
+    fcm_token text,
     updated_at timestamptz DEFAULT now(),
     UNIQUE(user_id)
 );
 
--- 3. SECURITY (RLS)
+-- ============================================================
+-- 3. COLUMN MIGRATIONS (safe for existing databases)
+-- ============================================================
+
+-- Drop UNIQUE constraint on username if it still exists
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_username_key;
+
+-- Add is_admin column if missing
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'profiles' AND column_name = 'is_admin'
+  ) THEN
+    ALTER TABLE public.profiles ADD COLUMN is_admin boolean DEFAULT false;
+  END IF;
+END $$;
+
+-- Add fcm_token column if missing
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'push_subscriptions' AND column_name = 'fcm_token'
+  ) THEN
+    ALTER TABLE public.push_subscriptions ADD COLUMN fcm_token text;
+  END IF;
+END $$;
+
+-- ============================================================
+-- 4. SECURITY (RLS)
+-- ============================================================
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rooms ENABLE ROW LEVEL SECURITY;
@@ -85,42 +127,43 @@ CREATE POLICY "Users can delete own messages" ON public.messages FOR DELETE USIN
 DROP POLICY IF EXISTS "Users can manage their own subscriptions" ON public.push_subscriptions;
 CREATE POLICY "Users can manage their own subscriptions" ON public.push_subscriptions FOR ALL USING (true) WITH CHECK (true);
 
--- 4. REALTIME
--- Enable realtime for messages (Wrapped in a safety block to avoid errors if already enabled)
+-- ============================================================
+-- 5. REALTIME
+-- ============================================================
+
 DO $$
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_publication_tables 
-        WHERE pubname = 'supabase_realtime' 
-        AND schemaname = 'public' 
-        AND tablename = 'messages'
-    ) THEN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
-    END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+    AND schemaname = 'public'
+    AND tablename = 'messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+  END IF;
 END $$;
 
--- 5. STORAGE BUCKET (Reference)
--- If using Supabase Storage instead of Base64, create a bucket named 'chat-media'
--- and set public access policies.
+-- ============================================================
+-- 6. INITIAL DATA
+-- ============================================================
 
--- 6. SAMPLE INITIAL ROOM
-INSERT INTO public.rooms (name, description) 
+INSERT INTO public.rooms (name, description)
 VALUES ('general', 'Main workspace channel for everyone')
 ON CONFLICT DO NOTHING;
 
--- 7. MANDATORY AUTOMATED CLEANUP
--- This function purges messages older than 30 days to ensure performance and privacy.
+-- ============================================================
+-- 7. CLEANUP SCHEDULE
+-- ============================================================
+
 CREATE OR REPLACE FUNCTION public.purge_old_messages()
 RETURNS void AS $$
 BEGIN
-    DELETE FROM public.messages 
-    WHERE created_at < now() - interval '30 days';
+  DELETE FROM public.messages
+  WHERE created_at < now() - interval '30 days';
 END;
 $$ LANGUAGE plpgsql;
 
--- To fully automate this in Supabase:
--- 1. Go to "Database" -> "Cron" in your Supabase Dashboard
--- 2. Create a new cron job:
---    Name: 'monthly_cleanup'
---    Schedule: '0 0 1 * *' (Runs on the 1st of every month)
---    Command: 'SELECT purge_old_messages();'
+-- To automate: Supabase Dashboard → Database → Cron
+-- Name: 'monthly_cleanup'
+-- Schedule: '0 0 1 * *' (1st of each month)
+-- Command: SELECT purge_old_messages();
