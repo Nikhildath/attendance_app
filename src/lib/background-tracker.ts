@@ -25,7 +25,7 @@ export async function startBackgroundTracker(config: {
       userId: config.userId,
       apiKey: config.apiKey,
       serverUrl: config.serverUrl,
-      minPostIntervalMs: 30_000,
+      minPostIntervalMs: 15_000,
     });
   } catch (err) {
     console.error("[BackgroundTracker] Failed to start:", err);

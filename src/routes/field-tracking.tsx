@@ -126,7 +126,7 @@ function FieldTrackingPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'branches' }, () => loadData())
       .subscribe((status) => setRealtimeConnected(status === "SUBSCRIBED"));
-    const refreshInterval = window.setInterval(loadData, 30_000);
+    const refreshInterval = window.setInterval(loadData, 15_000);
 
     realtimeSubRef.current = channel;
 

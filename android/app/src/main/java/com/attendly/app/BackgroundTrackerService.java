@@ -11,7 +11,9 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
 
@@ -34,26 +36,30 @@ import java.util.concurrent.Executors;
 public class BackgroundTrackerService extends Service {
     private static final String CHANNEL_ID = "attendly_tracker_channel";
     private static final int NOTIFICATION_ID = 28352;
-    private static final long DEFAULT_POST_INTERVAL_MS = 30_000L;
+    private static final long DEFAULT_POST_INTERVAL_MS = 15_000L;
+    private static final long RESTART_ALARM_INTERVAL_MS = 15_000L;
     private static final String ACTION_RESTART = "com.attendly.app.RESTART_TRACKER";
 
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
     private ExecutorService executor;
     private PowerManager.WakeLock wakeLock;
+    private Handler mainHandler;
 
     private String userId;
     private String apiKey;
     private String serverUrl;
     private long minPostIntervalMs = DEFAULT_POST_INTERVAL_MS;
     private long lastPostTime = 0;
-    private boolean isTracking = false;
+    private volatile boolean isTracking = false;
+    private volatile boolean isDestroyed = false;
 
     @Override
     public void onCreate() {
         super.onCreate();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         executor = Executors.newSingleThreadExecutor();
+        mainHandler = new Handler(Looper.getMainLooper());
         createNotificationChannel();
     }
 
@@ -70,6 +76,7 @@ public class BackgroundTrackerService extends Service {
 
         if (!isTracking && userId != null && apiKey != null && serverUrl != null) {
             Notification notification = buildNotification();
+            boolean started = false;
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
@@ -78,9 +85,28 @@ public class BackgroundTrackerService extends Service {
                 } else {
                     startForeground(NOTIFICATION_ID, notification);
                 }
+                started = true;
+            } catch (android.app.ForegroundServiceStartNotAllowedException e) {
+                // Android 12+: foreground service not allowed from background (AlarmManager restart path)
+                // Retry after a short delay so the OS allows it
+                mainHandler.postDelayed(() -> {
+                    if (isDestroyed) return;
+                    Intent retryIntent = new Intent(this, BackgroundTrackerService.class);
+                    retryIntent.putExtra("userId", userId);
+                    retryIntent.putExtra("apiKey", apiKey);
+                    retryIntent.putExtra("serverUrl", serverUrl);
+                    retryIntent.putExtra("minPostIntervalMs", minPostIntervalMs);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(retryIntent);
+                    } else {
+                        startService(retryIntent);
+                    }
+                }, 2000);
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            if (!started) return START_STICKY;
+
             acquireWakeLock();
             startLocationUpdates();
             scheduleRestartAlarm();
@@ -103,9 +129,14 @@ public class BackgroundTrackerService extends Service {
 
     @Override
     public void onDestroy() {
+        isDestroyed = true;
+        isTracking = false;
         stopLocationUpdates();
         releaseWakeLock();
-        cancelRestartAlarm();
+        if (mainHandler != null) {
+            mainHandler.removeCallbacksAndMessages(null);
+        }
+        scheduleRestartAlarm();
         if (executor != null && !executor.isShutdown()) {
             executor.shutdown();
         }
@@ -150,11 +181,22 @@ public class BackgroundTrackerService extends Service {
 
             AlarmManager alarm = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
             if (alarm != null) {
-                alarm.setExactAndAllowWhileIdle(
-                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                    SystemClock.elapsedRealtime() + 60_000,
-                    pendingIntent
-                );
+                // Use setAndAllowWhileIdle as fallback if setExactAndAllowWhileIdle requires
+                // SCHEDULE_EXACT_ALARM permission (Android 12+) and permission is denied
+                try {
+                    alarm.setExactAndAllowWhileIdle(
+                        AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                        SystemClock.elapsedRealtime() + RESTART_ALARM_INTERVAL_MS,
+                        pendingIntent
+                    );
+                } catch (SecurityException e) {
+                    // Missing SCHEDULE_EXACT_ALARM permission on Android 12+
+                    alarm.setAndAllowWhileIdle(
+                        AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                        SystemClock.elapsedRealtime() + RESTART_ALARM_INTERVAL_MS,
+                        pendingIntent
+                    );
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();

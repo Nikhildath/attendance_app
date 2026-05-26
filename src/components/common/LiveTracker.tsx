@@ -19,7 +19,7 @@ import {
 
 const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
 
-const TRACKING_INTERVAL_MS = 30_000;
+const TRACKING_INTERVAL_MS = 10_000;
 const BATTERY_PROMPT_KEY = "battery_opt_prompted";
 
 type BatteryManagerLike = {
@@ -147,7 +147,7 @@ export function LiveTracker() {
             console.warn("Location unavailable, using fallback location:", err.message);
             sendLocationUpdate();
           },
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
       };
 
