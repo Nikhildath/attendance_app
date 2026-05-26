@@ -5,6 +5,7 @@ import { useBranch } from "@/lib/branch-context";
 import { socketService } from "@/lib/socket-service";
 import { SOCKET_URL, API_KEY } from "@/lib/config";
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { startBackgroundTracker, stopBackgroundTracker } from "@/lib/background-tracker";
 
 const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
 
@@ -37,7 +38,7 @@ export function LiveTracker() {
         .limit(1)
         .single();
       
-      setIsTracking(data && !data.check_out);
+      setIsTracking(!!(data && !data.check_out));
     };
     
     checkStatus();
@@ -186,6 +187,11 @@ export function LiveTracker() {
 
     if (Capacitor.isNativePlatform()) {
       startNativeTracking();
+      startBackgroundTracker({
+        userId: profile.id,
+        apiKey: API_KEY,
+        serverUrl: SOCKET_URL,
+      });
     } else {
       startWebTracking();
     }
@@ -196,9 +202,12 @@ export function LiveTracker() {
         window.clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      if (watcherIdRef.current && Capacitor.isNativePlatform()) {
-        BackgroundGeolocation.removeWatcher({ id: watcherIdRef.current }).catch(console.error);
-        watcherIdRef.current = null;
+      if (Capacitor.isNativePlatform()) {
+        if (watcherIdRef.current) {
+          BackgroundGeolocation.removeWatcher({ id: watcherIdRef.current }).catch(console.error);
+          watcherIdRef.current = null;
+        }
+        stopBackgroundTracker();
       }
     };
   }, [profile?.id, profile?.role, branch?.id, branch?.lat, branch?.lng, isTracking]);

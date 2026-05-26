@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { useAuth } from "@/lib/auth";
 import { requestNotificationPermission, showLocalNotification, subscribeToPush } from "@/lib/push";
+import { useNotificationService } from "@/lib/notification-service";
 import { CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY, CHAT_STORAGE_BUCKET } from "@/lib/config";
 
 const STORAGE_BUCKET = CHAT_STORAGE_BUCKET || 'chat-media';
@@ -69,6 +70,7 @@ function ChatPage() {
   const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
   const [editRoomName, setEditRoomName] = useState('');
   const [editRoomDesc, setEditRoomDesc] = useState('');
+  const { setSuppressChatNotifications } = useNotificationService();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -173,7 +175,9 @@ function ChatPage() {
 
   useEffect(() => {
     if (user) fetchRooms();
-  }, [user]);
+    setSuppressChatNotifications(true);
+    return () => setSuppressChatNotifications(false);
+  }, [user, setSuppressChatNotifications]);
 
   useEffect(() => {
     if (activeRoom) {

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { LeaveStatusBadge } from "@/components/common/StatusBadge";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { sendPushNotification } from "@/lib/push";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -118,6 +119,23 @@ function LeavesPage() {
       toast.success("Leave request submitted");
       setOpen(false);
       loadLeaves();
+
+      // Notify managers/admins about the new leave request
+      supabase
+        .from("profiles")
+        .select("id")
+        .in("role", ["Admin", "Manager"])
+        .then(({ data: managers }) => {
+          if (managers) {
+            managers.forEach((m) => {
+              sendPushNotification(m.id, {
+                title: "New Leave Request",
+                body: `${profile?.name || "Someone"} requested ${data.type} leave (${data.from_date})`,
+                data: { url: "/team" },
+              });
+            });
+          }
+        });
     } else toast.error(error.message);
   };
 

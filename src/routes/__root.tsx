@@ -10,6 +10,7 @@ import { SettingsProvider } from "@/lib/settings-context";
 import { LiveTracker } from "@/components/common/LiveTracker";
 import { UpdateChecker } from "@/components/common/UpdateChecker";
 import { PWAInstallPrompt } from "@/components/common/PWAInstallPrompt";
+import { NotificationProvider } from "@/lib/notification-service";
 
 function NotFoundComponent() {
   return (
@@ -61,11 +62,17 @@ function RootComponent() {
             <LiveTracker />
             <UpdateChecker />
             <Toaster />
+            <NotificationProviderShell />
           </BranchProvider>
         </SettingsProvider>
       </AuthProvider>
     </ThemeProvider>
   );
+}
+
+function NotificationProviderShell() {
+  const { profile } = useAuth();
+  return <NotificationProvider userId={profile?.id}>{null}</NotificationProvider>;
 }
 
 function RootContent() {

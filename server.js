@@ -104,10 +104,22 @@ app.post('/api/location', async (req, res) => {
       return res.status(401).json({ error: 'Invalid API key' });
     }
 
-    const { userId, lat, lng, battery, speed, accuracy, task, status } = req.body;
+    // Support both the native plugin body format (latitude/longitude) and the custom body format (lat/lng)
+    // Also accept userId from header as fallback (used by native plugin's HTTP POST)
+    const userId = req.body.userId || req.body.user_id || req.headers['x-user-id'];
+    const lat = req.body.lat ?? req.body.latitude;
+    const lng = req.body.lng ?? req.body.longitude;
+
     if (!userId || lat == null || lng == null) {
-      return res.status(400).json({ error: 'userId, lat, and lng are required' });
+      return res.status(400).json({ error: 'userId, lat/latitude, and lng/longitude are required' });
     }
+
+    // Accept additional fields with fallback names
+    const battery = req.body.battery ?? 0;
+    const speed = req.body.speed_kmh ?? req.body.speed ?? 0;
+    const accuracy = req.body.accuracy ?? 0;
+    const task = req.body.task || req.body.current_task || 'Tracking in background';
+    const status = req.body.status || 'active';
 
     console.log(`[HTTP Location] User: ${userId}, Lat: ${lat}, Lng: ${lng}`);
 
@@ -127,10 +139,13 @@ app.post('/api/location', async (req, res) => {
       if (rpcError) {
         console.error(`[HTTP Location] RPC error:`, rpcError.message);
         // Fallback to direct upsert
-        await supabase.from('staff_tracking').upsert(
+        const { error: upsertError } = await supabase.from('staff_tracking').upsert(
           { user_id: userId, lat, lng, battery: battery || 0, speed_kmh: speed || 0, accuracy: accuracy || 0, current_task: task || 'Tracking in background', status: status || 'active', last_update: new Date().toISOString() },
           { onConflict: 'user_id' }
         );
+        if (upsertError) {
+          console.error(`[HTTP Location] Upsert error:`, upsertError.message);
+        }
       }
     } catch (dbError) {
       console.error(`[HTTP Location] DB error:`, dbError.message);
