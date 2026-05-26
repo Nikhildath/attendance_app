@@ -4,17 +4,33 @@ import { Topbar } from "../layout/Topbar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Link, useLocation } from "@tanstack/react-router";
-import { LayoutDashboard, Zap, Calendar, Users, Settings, Bell, Search, Radar, Shield, Sparkles } from "lucide-react";
+import { LayoutDashboard, Zap, Calendar, Users, Settings, Bell, Search, Radar, Shield, Sparkles, Grid3X3, Clock, FileText, BarChart3, MapPinned, MessageSquare, CalendarRange, Wallet, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/lib/auth";
+
+const extraMobileNav = [
+  { to: "/leaves", label: "Leaves", icon: FileText },
+  { to: "/comp-offs", label: "Comp Offs", icon: Clock },
+  { to: "/shifts", label: "Shifts", icon: CalendarRange },
+  { to: "/payroll", label: "Payroll", icon: Wallet },
+  { to: "/chat", label: "Chat", icon: MessageSquare },
+  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/field-tracking", label: "Field Tracking", icon: MapPinned, roles: ["Manager", "Admin"] },
+  { to: "/reports", label: "Reports", icon: BarChart3, roles: ["Manager", "Admin"] },
+  { to: "/admin", label: "Admin Console", icon: Shield, roles: ["Admin"] },
+] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMoreNav, setShowMoreNav] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
+  const { profile } = useAuth();
 
   useEffect(() => {
     setShowMobileMenu(false);
+    setShowMoreNav(false);
   }, [location.pathname]);
 
   return (
@@ -123,23 +139,80 @@ export function AppShell({ children }: { children: React.ReactNode }) {
            </div>
 
            <MobileNavItem to="/team" icon={Users} active={location.pathname === "/team"} />
-           <MobileNavItem to="/settings" icon={Settings} active={location.pathname === "/settings"} />
+           <MobileNavItem onClick={() => setShowMoreNav(true)} icon={Grid3X3} active={showMoreNav} />
         </nav>
+      )}
+
+      {/* Mobile More Navigation Sheet */}
+      {isMobile && (
+        <AnimatePresence>
+          {showMoreNav && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowMoreNav(false)}
+                className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-md dark:bg-black/80"
+              />
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="fixed inset-x-4 bottom-24 z-50 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-2xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#0a0a0a]/95"
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">More</span>
+                  <button onClick={() => setShowMoreNav(false)} className="rounded-full p-1 text-muted-foreground hover:text-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {extraMobileNav
+                    .filter((item) => !("roles" in item) || (item as any).roles.includes(profile?.role || "Employee"))
+                    .map((item) => {
+                      const Icon = item.icon;
+                      const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setShowMoreNav(false)}
+                          className={cn(
+                            "flex flex-col items-center gap-1.5 rounded-xl p-3 transition-all",
+                            active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                          )}
+                        >
+                          <div className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-xl transition-all",
+                            active ? "bg-primary text-primary-foreground shadow-glow" : "bg-muted/80"
+                          )}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-center leading-tight">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       )}
     </div>
   );
 }
 
-function MobileNavItem({ to, icon: Icon, active }: { to: string; icon: any; active: boolean }) {
-  return (
-    <Link to={to} className="group/nav relative flex h-full min-w-0 flex-1 flex-col items-center justify-center rounded-2xl transition-all duration-300">
+function MobileNavItem({ to, onClick, icon: Icon, active }: { to?: string; onClick?: () => void; icon: any; active: boolean }) {
+  const inner = (
+    <>
       <div className={cn(
         "relative rounded-2xl p-2.5 transition-all duration-500 sm:p-3",
         active ? "text-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--primary-rgb),0.12)] scale-110" : "text-muted-foreground group-hover/nav:text-foreground/70 dark:text-white/20 dark:group-hover/nav:text-white/60"
       )}>
         <Icon className={cn("h-5 w-5 sm:h-6 sm:w-6", active && "drop-shadow-[0_0_10px_var(--color-primary)]")} />
         
-        {/* Active Particle Effect */}
         {active && (
           <motion.div 
             initial={{ scale: 0, opacity: 0 }}
@@ -157,6 +230,20 @@ function MobileNavItem({ to, icon: Icon, active }: { to: string; icon: any; acti
           className="absolute -bottom-2 w-8 h-1 bg-primary rounded-full blur-sm opacity-50 shadow-glow" 
         />
       )}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button onClick={onClick} className="group/nav relative flex h-full min-w-0 flex-1 flex-col items-center justify-center rounded-2xl transition-all duration-300">
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <Link to={to!} className="group/nav relative flex h-full min-w-0 flex-1 flex-col items-center justify-center rounded-2xl transition-all duration-300">
+      {inner}
     </Link>
   );
 }

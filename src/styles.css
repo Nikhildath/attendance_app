@@ -166,6 +166,8 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     padding-bottom: env(safe-area-inset-bottom);
     overflow-x: clip;
+    -webkit-user-select: none;
+    user-select: none;
   }
   body,
   #root {
