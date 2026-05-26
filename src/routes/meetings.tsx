@@ -447,6 +447,7 @@ function MeetingsPage() {
           userName={profile.name}
           isDirect={activeCall.isDirect}
           calleeName={activeCall.calleeName}
+          profiles={profiles.map(p => ({ id: p.id, name: p.name, avatar_url: p.avatar_url, role: p.role }))}
           onEnd={() => {
             if (activeCall.isDirect && activeCall.calleeId) {
               socketService.endCall(activeCall.calleeId);

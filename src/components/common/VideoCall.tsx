@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { socketService } from "@/lib/socket-service";
-import { X, Mic, MicOff, Video, VideoOff, Monitor, Phone, PhoneOff, MessageSquare, Maximize2, Minimize2 } from "lucide-react";
+import { X, Mic, MicOff, Video, VideoOff, Monitor, Phone, PhoneOff, MessageSquare, Maximize2, Minimize2, Users, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Peer from "simple-peer";
 
@@ -12,6 +12,7 @@ interface VideoCallProps {
   calleeName?: string;
   onEnd: () => void;
   onReady?: () => void;
+  profiles?: { id: string; name: string; avatar_url?: string | null; role?: string }[];
 }
 
 type PeerEntry = {
@@ -20,7 +21,7 @@ type PeerEntry = {
   stream?: MediaStream;
 };
 
-export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEnd, onReady }: VideoCallProps) {
+export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEnd, onReady, profiles }: VideoCallProps) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [peers, setPeers] = useState<PeerEntry[]>([]);
   const [isMuted, setIsMuted] = useState(false);
@@ -29,6 +30,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   const [callDuration, setCallDuration] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showAddPeople, setShowAddPeople] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ sender: string; text: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -36,6 +38,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const peersRef = useRef<Map<string, Peer.Instance>>(new Map());
+  const peerNamesRef = useRef<Map<string, string>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
@@ -120,6 +123,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
 
     const unsubJoined = socketService.onVideoUserJoined((data) => {
       if (data.userId !== userId) {
+        peerNamesRef.current.set(data.userId, data.name);
         createPeer(data.userId, true, localStream);
       }
     });
@@ -266,7 +270,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
             <div key={p.peerId} className="relative rounded-xl md:rounded-2xl overflow-hidden bg-zinc-900 min-h-0">
               <video ref={(el) => { if (el && p.stream) el.srcObject = p.stream; }} autoPlay playsInline className="w-full h-full object-cover" />
               <div className="absolute bottom-2 left-2 px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg bg-black/50 text-white text-[10px] md:text-xs font-medium backdrop-blur-sm">
-                {p.peerId === userId ? "You" : p.peerId.slice(0, 8)}
+                {peerNamesRef.current.get(p.peerId) || p.peerId.slice(0, 8)}
               </div>
             </div>
           ))}
@@ -276,7 +280,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
             className={cn(
               "relative rounded-xl md:rounded-2xl overflow-hidden bg-zinc-900",
               remotePeers.length > 0
-                ? "absolute bottom-16 md:bottom-20 right-2 md:right-4 w-28 h-36 md:w-48 md:h-36 z-20 shadow-2xl border-2 border-white/20"
+                ? "absolute bottom-16 md:bottom-20 right-2 md:right-4 w-32 h-44 md:w-48 md:h-40 z-20 shadow-2xl border-2 border-white/20"
                 : ""
             )}
           >
@@ -339,6 +343,12 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
           <Monitor size={18} className="md:hidden" />
           <Monitor size={22} className="hidden md:block" />
         </button>
+        {profiles && profiles.length > 0 && (
+          <button onClick={() => { setShowAddPeople(!showAddPeople); showControls(); }} className={cn("p-3 md:p-4 rounded-full transition-all active:scale-90", showAddPeople ? "bg-primary/80 text-white" : "bg-white/10 text-white hover:bg-white/20")}>
+            <Users size={18} className="md:hidden" />
+            <Users size={22} className="hidden md:block" />
+          </button>
+        )}
       </div>
 
       {/* Tap to show controls hint */}
@@ -369,6 +379,42 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
             <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type a message..." className="flex-1 bg-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:ring-1 focus:ring-primary/50" />
             <button type="submit" className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/80">Send</button>
           </form>
+        </div>
+      )}
+
+      {/* Add Participants Panel */}
+      {showAddPeople && profiles && (
+        <div className="absolute top-0 right-0 bottom-0 w-full sm:w-80 bg-zinc-900/95 backdrop-blur-xl border-l border-white/10 z-40 flex flex-col">
+          <div className="flex items-center justify-between p-3 md:p-4 border-b border-white/10">
+            <h3 className="text-white font-bold text-sm md:text-base">Add People</h3>
+            <button onClick={() => setShowAddPeople(false)} className="p-1.5 rounded-lg hover:bg-white/10 text-white/60"><X size={16} /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {profiles
+              .filter((p) => p.id !== userId)
+              .map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setShowAddPeople(false);
+                    socketService.initiateDirectCall(p.id, userName, roomId);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl p-3 hover:bg-white/5 transition-colors text-left"
+                >
+                  <div className="h-9 w-9 rounded-xl bg-primary/20 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                    {p.name[0]?.toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{p.name}</p>
+                    <p className="text-white/50 text-[10px] font-medium">{p.role || "Employee"}</p>
+                  </div>
+                  <ChevronRight size={16} className="text-white/30 shrink-0" />
+                </button>
+              ))}
+            {profiles.filter((p) => p.id !== userId).length === 0 && (
+              <p className="text-white/40 text-sm text-center py-8">No other users available</p>
+            )}
+          </div>
         </div>
       )}
     </div>
