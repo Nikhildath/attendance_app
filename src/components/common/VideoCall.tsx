@@ -60,23 +60,36 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
     startHideTimer();
   }, [startHideTimer]);
 
-  useEffect(() => {
-    const startCall = async () => {
+  const startCall = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 480 } },
+        audio: true,
+      });
+      setLocalStream(stream);
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      socketService.joinVideoRoom(roomId, userName);
+      setMediaError(null);
+      onReady?.();
+    } catch (err: any) {
+      console.warn("Camera unavailable, trying audio-only:", err.message);
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 480 } },
-          audio: true,
-        });
-        setLocalStream(stream);
-        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        setLocalStream(audioStream);
+        if (localVideoRef.current) localVideoRef.current.srcObject = audioStream;
+        setIsVideoOff(true);
         socketService.joinVideoRoom(roomId, userName);
+        setMediaError(null);
         onReady?.();
-      } catch (err: any) {
-        console.error("Failed to get media:", err);
-        setMediaError(err.message || "Camera/mic access denied. Check permissions.");
+      } catch (audioErr: any) {
+        console.error("Microphone also denied:", audioErr.message);
+        setMediaError("Camera and microphone access denied. Please allow permissions in your browser settings and try again.");
         onReady?.();
       }
-    };
+    }
+  }, [roomId, userName, onReady]);
+
+  useEffect(() => {
     startCall();
 
     const timer = setInterval(() => setCallDuration((d) => d + 1), 1000);
@@ -88,6 +101,18 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       stopAll();
     };
   }, [roomId]);
+
+  // Sync stream to video element whenever it changes
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
+
+  const retryMedia = useCallback(() => {
+    setMediaError(null);
+    startCall();
+  }, [startCall]);
 
   const stopAll = useCallback(() => {
     localStream?.getTracks().forEach((t) => t.stop());
@@ -324,8 +349,13 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
             )}
           >
             {mediaError ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-zinc-800 p-2 text-center">
-                <p className="text-white/70 text-[10px] md:text-xs">{mediaError}</p>
+              <div className="absolute inset-0 flex items-center justify-center bg-zinc-800 p-4 text-center">
+                <div>
+                  <p className="text-white/80 text-xs md:text-sm font-medium mb-3">{mediaError}</p>
+                  <button onClick={retryMedia} className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/80 transition-all active:scale-90">
+                    Retry
+                  </button>
+                </div>
               </div>
             ) : (
               <>
