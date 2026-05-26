@@ -150,7 +150,7 @@ function Dashboard() {
         
         <div className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/80 p-3 backdrop-blur-3xl dark:border-white/[0.05] dark:bg-white/[0.02] sm:w-auto sm:justify-start">
            <div className="flex min-w-0 flex-col items-start sm:items-end">
-              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Profile Status</span>
+              <span className="text-[9px] font-black text-foreground/50 uppercase tracking-widest">Profile Status</span>
               <span className="text-xs font-black text-success uppercase tracking-tighter">Verified Account</span>
            </div>
            <div className="h-8 w-[1px] bg-border/80 dark:bg-white/5" />
@@ -180,7 +180,7 @@ function Dashboard() {
                        <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">{a.title}</h4>
                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
                     </div>
-                    <p className="mt-1 text-sm font-bold leading-relaxed text-foreground/70 dark:text-white/70 line-clamp-2 sm:line-clamp-1">{a.content}</p>
+                     <p className="mt-1 text-sm font-bold leading-relaxed text-foreground/90 dark:text-white/80 line-clamp-2 sm:line-clamp-1">{a.content}</p>
                   </div>
                 </div>
               </div>
@@ -442,18 +442,18 @@ function MetricCard({ icon: Icon, label, value, sub, color }: any) {
            <div className="absolute inset-0 bg-current opacity-20" />
            <Icon className="w-6 h-6 relative z-10" />
         </div>
-        <div className="flex flex-col items-end">
-           <TrendingUp className="w-4 h-4 opacity-30" />
-        </div>
+         <div className="flex flex-col items-end">
+            <TrendingUp className="w-4 h-4 text-foreground/40" />
+         </div>
       </div>
       <div>
         <p className="text-3xl font-black italic tracking-tighter tabular-nums text-foreground dark:text-white md:text-4xl">{value}</p>
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] mt-2 opacity-40">{label}</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] mt-2 text-foreground/60">{label}</p>
         <div className="mt-5 flex items-center gap-3">
            <div className="flex-1 h-[2px] rounded-full bg-border/80 overflow-hidden dark:bg-white/5">
               <div className="h-full bg-current w-3/4 shadow-glow" />
            </div>
-           <span className="text-[8px] font-black uppercase tracking-widest opacity-30">{sub}</span>
+           <span className="text-[8px] font-black uppercase tracking-widest text-foreground/50">{sub}</span>
         </div>
       </div>
     </motion.div>
