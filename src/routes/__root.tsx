@@ -58,11 +58,12 @@ function RootComponent() {
       <AuthProvider>
         <SettingsProvider>
           <BranchProvider>
-            <RootContent />
-            <LiveTracker />
-            <UpdateChecker />
-            <Toaster />
-            <NotificationProviderShell />
+            <NotificationProviderShell>
+              <RootContent />
+              <LiveTracker />
+              <UpdateChecker />
+              <Toaster />
+            </NotificationProviderShell>
           </BranchProvider>
         </SettingsProvider>
       </AuthProvider>
@@ -70,9 +71,9 @@ function RootComponent() {
   );
 }
 
-function NotificationProviderShell() {
+function NotificationProviderShell({ children }: { children: React.ReactNode }) {
   const { profile } = useAuth();
-  return <NotificationProvider userId={profile?.id}>{null}</NotificationProvider>;
+  return <NotificationProvider userId={profile?.id}>{children}</NotificationProvider>;
 }
 
 function RootContent() {
