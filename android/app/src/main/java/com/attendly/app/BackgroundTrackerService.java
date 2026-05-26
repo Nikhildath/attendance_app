@@ -1,14 +1,19 @@
 package com.attendly.app;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
+import android.os.SystemClock;
 
 import androidx.core.app.NotificationCompat;
 
@@ -30,10 +35,12 @@ public class BackgroundTrackerService extends Service {
     private static final String CHANNEL_ID = "attendly_tracker_channel";
     private static final int NOTIFICATION_ID = 28352;
     private static final long DEFAULT_POST_INTERVAL_MS = 30_000L;
+    private static final String ACTION_RESTART = "com.attendly.app.RESTART_TRACKER";
 
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
     private ExecutorService executor;
+    private PowerManager.WakeLock wakeLock;
 
     private String userId;
     private String apiKey;
@@ -74,11 +81,19 @@ public class BackgroundTrackerService extends Service {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            acquireWakeLock();
             startLocationUpdates();
+            scheduleRestartAlarm();
             isTracking = true;
         }
 
         return START_STICKY;
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        scheduleRestartAlarm();
     }
 
     @Override
@@ -89,10 +104,76 @@ public class BackgroundTrackerService extends Service {
     @Override
     public void onDestroy() {
         stopLocationUpdates();
+        releaseWakeLock();
+        cancelRestartAlarm();
         if (executor != null && !executor.isShutdown()) {
             executor.shutdown();
         }
         super.onDestroy();
+    }
+
+    private void acquireWakeLock() {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null) {
+                wakeLock = pm.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "attendly:location"
+                );
+                wakeLock.setReferenceCounted(false);
+                wakeLock.acquire();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void releaseWakeLock() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+        } catch (Exception ignored) {}
+        wakeLock = null;
+    }
+
+    private void scheduleRestartAlarm() {
+        try {
+            Intent restartIntent = new Intent(this, BackgroundTrackerService.class);
+            restartIntent.putExtra("userId", userId);
+            restartIntent.putExtra("apiKey", apiKey);
+            restartIntent.putExtra("serverUrl", serverUrl);
+            restartIntent.putExtra("minPostIntervalMs", minPostIntervalMs);
+
+            int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
+            PendingIntent pendingIntent = PendingIntent.getService(this, 0, restartIntent, flags);
+
+            AlarmManager alarm = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            if (alarm != null) {
+                alarm.setExactAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    SystemClock.elapsedRealtime() + 60_000,
+                    pendingIntent
+                );
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void cancelRestartAlarm() {
+        try {
+            Intent restartIntent = new Intent(this, BackgroundTrackerService.class);
+            int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_NO_CREATE;
+            PendingIntent pendingIntent = PendingIntent.getService(this, 0, restartIntent, flags);
+            if (pendingIntent != null) {
+                AlarmManager alarm = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                if (alarm != null) {
+                    alarm.cancel(pendingIntent);
+                }
+                pendingIntent.cancel();
+            }
+        } catch (Exception ignored) {}
     }
 
     private void startLocationUpdates() {
