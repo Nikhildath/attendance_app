@@ -3,7 +3,7 @@ import { Sidebar } from "../layout/Sidebar";
 import { Topbar } from "../layout/Topbar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useRouter } from "@tanstack/react-router";
 import { LayoutDashboard, Zap, Calendar, Users, Settings, Bell, Search, Radar, Shield, Sparkles, Grid3X3, Clock, FileText, BarChart3, MapPinned, MessageSquare, CalendarRange, Wallet, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth";
@@ -26,6 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [showMoreNav, setShowMoreNav] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
+  const router = useRouter();
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -175,12 +176,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       const Icon = item.icon;
                       const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
                       return (
-                        <Link
+                        <button
                           key={item.to}
-                          to={item.to}
-                          onClick={() => setShowMoreNav(false)}
+                          onClick={() => {
+                            setShowMoreNav(false);
+                            setTimeout(() => router.navigate({ to: item.to }), 0);
+                          }}
                           className={cn(
-                            "flex flex-col items-center gap-1.5 rounded-xl p-3 transition-all",
+                            "flex flex-col items-center gap-1.5 rounded-xl p-3 transition-all cursor-pointer",
                             active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                           )}
                         >
@@ -191,7 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <Icon className="h-5 w-5" />
                           </div>
                           <span className="text-[9px] font-black uppercase tracking-wider text-center leading-tight">{item.label}</span>
-                        </Link>
+                        </button>
                       );
                     })}
                 </div>
