@@ -107,6 +107,18 @@ class SocketService {
           console.log('🔄 Status change:', data);
           this.emit('status_change', data);
         });
+
+        // Listen for staff connected (new tracker)
+        this.socket.on('staff_connected', (data: StaffLocation & { branch_id?: string; role?: string; name?: string }) => {
+          console.log('🟢 Staff connected:', data);
+          this.emit('staff_connected', data);
+        });
+
+        // Listen for staff disconnected
+        this.socket.on('staff_disconnected', (data: { userId: string }) => {
+          console.log('🔴 Staff disconnected:', data);
+          this.emit('staff_disconnected', data);
+        });
       } catch (error) {
         console.error('💥 Socket connection exception:', error);
         this.isConnecting = false;
@@ -154,6 +166,18 @@ class SocketService {
   onStatusChange(callback: (data: { userId: string; status: 'active' | 'idle' | 'offline' }) => void): () => void {
     this.on('status_change', callback);
     return () => this.off('status_change', callback);
+  }
+
+  // Subscribe to staff connected events (new tracker started)
+  onStaffConnected(callback: (data: StaffLocation & { branch_id?: string; role?: string; name?: string }) => void): () => void {
+    this.on('staff_connected', callback);
+    return () => this.off('staff_connected', callback);
+  }
+
+  // Subscribe to staff disconnected events
+  onStaffDisconnected(callback: (data: { userId: string }) => void): () => void {
+    this.on('staff_disconnected', callback);
+    return () => this.off('staff_disconnected', callback);
   }
 
   isConnected(): boolean {

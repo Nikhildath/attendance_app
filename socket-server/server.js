@@ -7,6 +7,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { createClient } from '@supabase/supabase-js';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 
 import {
   SUPABASE_URL,
@@ -33,6 +34,14 @@ const supabase = createClient(
   SUPABASE_ANON_KEY || ''
 );
 
+// Rate limiter for background location endpoint
+const locationLimiter = rateLimit({
+  windowMs: 30 * 1000,
+  max: 5,
+  keyGenerator: (req) => req.headers['x-user-id'] || req.body?.userId || req.ip,
+  message: { error: 'Too many location updates. Please slow down.' },
+});
+
 app.use(cors());
 app.use(express.json());
 
@@ -42,7 +51,7 @@ app.get('/health', (req, res) => {
 });
 
 // Background location update endpoint (used by native geolocation plugin when app is in background/killed)
-app.post('/api/location', async (req, res) => {
+app.post('/api/location', locationLimiter, async (req, res) => {
   try {
     const apiKey = req.headers['x-api-key'];
     if (apiKey !== API_KEY) {
@@ -58,7 +67,7 @@ app.post('/api/location', async (req, res) => {
 
     try {
       const { error: rpcError } = await supabase.rpc('upsert_staff_tracking', {
-        p_user_id: userId,
+        p_id: userId,
         p_lat: lat,
         p_lng: lng,
         p_battery: battery || 0,
@@ -223,6 +232,9 @@ io.on('connection', (socket) => {
         return;
       }
 
+      // Check if this is a new user starting to track
+      const isNewUser = !locationCache.has(userId);
+      
       // Update location cache
       const existing = locationCache.get(userId) || {};
       const updated = {
@@ -239,12 +251,32 @@ io.on('connection', (socket) => {
       };
       locationCache.set(userId, updated);
       
+      // Broadcast staff_connected for new trackers so all clients add them
+      if (isNewUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, name, role, branch_id, avatar_url')
+          .eq('id', userId)
+          .maybeSingle();
+        if (profile) {
+          io.emit('staff_connected', {
+            ...profile,
+            lat, lng, battery,
+            speed: speed || 0,
+            accuracy: accuracy || 0,
+            task: task || 'No active task',
+            status: status || 'active',
+            lastUpdate: updated.lastUpdate,
+          });
+        }
+      }
+      
       console.log(`[Location Update] Broadcasting to all clients:`, updated);
 
       // Update Supabase (use RPC to bypass RLS)
       try {
         const { error: rpcError } = await supabase.rpc('upsert_staff_tracking', {
-          p_user_id: userId,
+          p_id: userId,
           p_lat: lat,
           p_lng: lng,
           p_battery: battery,
@@ -293,6 +325,7 @@ io.on('connection', (socket) => {
     console.log(`User disconnected: ${socket.userId}`);
     connectedUsers.delete(socket.userId);
     locationCache.delete(socket.userId);
+    io.emit('staff_disconnected', { userId: socket.userId });
   });
 
   // Handle status change

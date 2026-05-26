@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { MapPin, MapPinned, Battery, Search, Radio, Activity, Pause, Power } from "lucide-react";
+import { MapPin, MapPinned, Battery, Search, Radio, Activity, Pause, Power, Menu, X } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -54,6 +54,7 @@ function FieldTrackingPage() {
   const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [showMobileList, setShowMobileList] = useState(false);
   
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
@@ -101,11 +102,6 @@ function FieldTrackingPage() {
           } as any;
         });
         setStaff(merged);
-        
-        // Initial selected branch
-        if (profile?.branch_id && selectedBranchId === "all") {
-            setSelectedBranchId(profile.branch_id);
-        }
 
         setSelected((prev) => {
           if (!prev) return merged[0] ?? null;
@@ -128,15 +124,37 @@ function FieldTrackingPage() {
     const channel = supabase.channel('tracking_changes_' + profile.id)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_tracking' }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'branches' }, () => loadData())
       .subscribe((status) => setRealtimeConnected(status === "SUBSCRIBED"));
     const refreshInterval = window.setInterval(loadData, 30_000);
 
     realtimeSubRef.current = channel;
 
+    // Request staff locations from socket server to sync with active trackers
+    socketService.requestStaffLocations();
+
     // Subscribe to Socket.io location updates
     const unsubLocation = socketService.onStaffLocationUpdate((data: StaffLocation) => {
-      setStaff((prev) =>
-        prev.map((s) =>
+      setStaff((prev) => {
+        const exists = prev.some((s) => s.id === data.id);
+        if (!exists) {
+          const newStaff: FieldStaff = {
+            id: data.id,
+            name: data.name || "Unknown",
+            initials: (data.name || "U").split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+            role: data.task?.replace(' - GPS Active', '').replace(' - Using Branch Location', '') || 'Field Staff',
+            status: data.status,
+            lat: data.lat,
+            lng: data.lng,
+            battery: data.battery,
+            task: data.task,
+            speedKmh: data.speed,
+            lastUpdate: new Date(data.lastUpdate).toLocaleTimeString(),
+            accuracy: data.accuracy,
+          };
+          return [...prev, newStaff];
+        }
+        return prev.map((s) =>
           s.id === data.id
             ? {
                 ...s,
@@ -150,13 +168,13 @@ function FieldTrackingPage() {
                 accuracy: data.accuracy,
               }
             : s
-        )
-      );
+        );
+      });
     });
 
     const unsubLocations = socketService.onStaffLocations((data: StaffLocation[]) => {
-      setStaff((prev) =>
-        prev.map((s) => {
+      setStaff((prev) => {
+        const updated = prev.map((s) => {
           const update = data.find((d) => d.id === s.id);
           if (!update) return s;
           return {
@@ -170,14 +188,62 @@ function FieldTrackingPage() {
             lastUpdate: new Date(update.lastUpdate).toLocaleTimeString(),
             accuracy: update.accuracy,
           };
-        })
-      );
+        });
+        const existingIds = new Set(prev.map((s) => s.id));
+        const newStaff = data
+          .filter((d) => !existingIds.has(d.id))
+          .map((d): FieldStaff => ({
+            id: d.id,
+            name: d.name || "Unknown",
+            initials: (d.name || "U").split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+            role: d.task?.replace(' - GPS Active', '').replace(' - Using Branch Location', '') || 'Field Staff',
+            status: d.status,
+            lat: d.lat,
+            lng: d.lng,
+            battery: d.battery,
+            task: d.task,
+            speedKmh: d.speed,
+            lastUpdate: new Date(d.lastUpdate).toLocaleTimeString(),
+            accuracy: d.accuracy,
+          }));
+        return [...updated, ...newStaff];
+      });
     });
 
     const unsubStatus = socketService.onStatusChange((data) => {
       setStaff((prev) =>
         prev.map((s) =>
           s.id === data.userId ? { ...s, status: data.status } : s
+        )
+      );
+    });
+
+    const unsubConnected = socketService.onStaffConnected((data: any) => {
+      setStaff((prev) => {
+        if (prev.some((s) => s.id === data.id)) return prev;
+        const newStaff: FieldStaff = {
+          id: data.id,
+          name: data.name || "Unknown",
+          initials: (data.name || "U").split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+          role: data.role || 'Field Staff',
+          status: data.status || 'active',
+          lat: data.lat,
+          lng: data.lng,
+          battery: data.battery ?? null,
+          task: data.task || 'No active task',
+          speedKmh: data.speed || 0,
+          lastUpdate: new Date(data.lastUpdate).toLocaleTimeString(),
+          accuracy: data.accuracy || 0,
+          branch_id: data.branch_id,
+        };
+        return [...prev, newStaff];
+      });
+    });
+
+    const unsubDisconnected = socketService.onStaffDisconnected((data) => {
+      setStaff((prev) =>
+        prev.map((s) =>
+          s.id === data.userId ? { ...s, status: "offline" as const } : s
         )
       );
     });
@@ -192,6 +258,8 @@ function FieldTrackingPage() {
       unsubLocation();
       unsubLocations();
       unsubStatus();
+      unsubConnected();
+      unsubDisconnected();
     };
   }, [profile?.id]);
 
@@ -480,7 +548,7 @@ function FieldTrackingPage() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="relative overflow-hidden rounded-2xl border bg-white shadow-card">
-          <div ref={mapRef} className="h-[620px] w-full transition-all duration-500" style={{ background: "#ebebeb" }} />
+          <div ref={mapRef} className="h-[400px] sm:h-[500px] lg:h-[620px] w-full transition-all duration-500" style={{ background: "#ebebeb" }} />
           
           {/* Overlay info */}
           <div className="absolute top-6 left-6 z-[1000]">
@@ -490,14 +558,26 @@ function FieldTrackingPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card shadow-card">
+        {/* Mobile toggle for staff list */}
+        <button
+          onClick={() => setShowMobileList((v) => !v)}
+          className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl lg:hidden"
+        >
+          {showMobileList ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+
+        <div className={cn(
+          "rounded-xl border bg-card shadow-card",
+          "max-lg:fixed max-lg:inset-x-4 max-lg:bottom-20 max-lg:z-40 max-lg:max-h-[50vh] max-lg:overflow-auto max-lg:rounded-2xl max-lg:border-2 max-lg:shadow-2xl max-lg:transition-all max-lg:duration-300",
+          showMobileList ? "max-lg:opacity-100 max-lg:scale-100" : "max-lg:pointer-events-none max-lg:opacity-0 max-lg:scale-95"
+        )}>
           <div className="border-b p-4">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search staff…" className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm" />
             </div>
           </div>
-          <ul className="max-h-[492px] overflow-y-auto">
+          <ul className="max-h-[320px] overflow-y-auto lg:max-h-[492px]">
             {loading ? (
                <div className="p-10 text-center text-muted-foreground text-xs">Loading staff...</div>
             ) : filtered.length === 0 ? (

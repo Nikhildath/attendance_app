@@ -202,7 +202,7 @@ app.post('/api/location', locationLimiter, async (req, res) => {
     // Upsert using RPC
     try {
       const { error: rpcError } = await supabase.rpc('upsert_staff_tracking', {
-        p_user_id: userId,
+        p_id: userId,
         p_lat: lat,
         p_lng: lng,
         p_battery: battery || 0,
@@ -373,6 +373,9 @@ io.on('connection', (socket) => {
         return;
       }
 
+      // Check if this is a new user starting to track
+      const isNewUser = !locationCache.has(userId);
+
       // Update location cache
       const existing = locationCache.get(userId) || {};
       const updated = {
@@ -388,13 +391,33 @@ io.on('connection', (socket) => {
         lastUpdate: new Date().toISOString(),
       };
       locationCache.set(userId, updated);
+
+      // Broadcast staff_connected for new trackers so all clients add them
+      if (isNewUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, name, role, branch_id, avatar_url')
+          .eq('id', userId)
+          .maybeSingle();
+        if (profile) {
+          io.emit('staff_connected', {
+            ...profile,
+            lat, lng, battery,
+            speed: speed || 0,
+            accuracy: accuracy || 0,
+            task: task || 'No active task',
+            status: status || 'active',
+            lastUpdate: updated.lastUpdate,
+          });
+        }
+      }
       
       console.log(`[Location Update] Broadcasting to all clients:`, updated);
 
       // Update Supabase (use RPC to bypass RLS)
       try {
         const { error: rpcError } = await supabase.rpc('upsert_staff_tracking', {
-          p_user_id: userId,
+          p_id: userId,
           p_lat: lat,
           p_lng: lng,
           p_battery: battery,
@@ -443,6 +466,7 @@ io.on('connection', (socket) => {
     console.log(`User disconnected: ${socket.userId}`);
     connectedUsers.delete(socket.userId);
     locationCache.delete(socket.userId);
+    io.emit('staff_disconnected', { userId: socket.userId });
   });
 
   // Handle status change
