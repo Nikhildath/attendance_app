@@ -62,7 +62,6 @@ export function IncomingCallScreen({ callerName, callerId, roomId, onAccept, onR
   }, []);
 
   const handleAccept = () => {
-    socketService.joinVideoRoom(roomId, callerName);
     onAccept(roomId);
   };
 

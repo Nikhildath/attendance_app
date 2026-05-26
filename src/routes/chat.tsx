@@ -231,12 +231,6 @@ function ChatPage() {
         filter: `room_id=eq.${activeRoom.id}` 
       }, payload => {
         if (payload.new.room_id !== activeRoom.id) return;
-        // Only add via Realtime if not already received via socket
-        setMessages(prev => {
-          if (prev.some(m => m.id === payload.new.id)) return prev;
-          return prev;
-        });
-        // Try to fetch the message with profile data
         fetchMessageWithProfile(payload.new.id, activeRoom.id);
       })
       .subscribe();
@@ -336,9 +330,11 @@ function ChatPage() {
     
     if (error) console.error("Error fetching single message:", error);
     if (!error && data) {
-      // Final check: only append if we are still in the same room
       if (data.room_id === targetRoomId) {
-        setMessages(prev => [...prev, data]);
+        setMessages(prev => {
+          if (prev.some(m => m.id === data.id)) return prev;
+          return [...prev, data];
+        });
         scrollToBottom();
       }
     }

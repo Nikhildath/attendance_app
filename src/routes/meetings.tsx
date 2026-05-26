@@ -95,6 +95,15 @@ function MeetingsPage() {
     return unsub;
   }, []);
 
+  // Listen for call ended (caller hung up before we answered, or callee declined)
+  useEffect(() => {
+    const unsub = socketService.onCallEnded((data) => {
+      setIncomingCall((prev) => (prev && data.from === prev.callerId ? null : prev));
+      setActiveCall((prev) => (prev && data.from !== profile?.id ? null : prev));
+    });
+    return unsub;
+  }, [profile?.id]);
+
   // Check if opened from push notification (call=incoming param)
   useEffect(() => {
     const params = search as Record<string, unknown>;
