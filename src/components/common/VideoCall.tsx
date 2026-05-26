@@ -216,23 +216,33 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       const videoTrack = localStream?.getVideoTracks()[0];
       const oldScreenTrack = screenTrackRef.current;
       screenTrackRef.current = null;
-      peersRef.current.forEach((p) => { if (oldScreenTrack && videoTrack) p.replaceTrack(oldScreenTrack, videoTrack, localStream!); });
+      if (oldScreenTrack && videoTrack) {
+        peersRef.current.forEach((p) => p.replaceTrack(oldScreenTrack, videoTrack, localStream!));
+      }
       setIsScreenSharing(false);
       socketService.setScreenShare(roomId, false);
       showControls();
       return;
     }
     try {
+      if (typeof navigator.mediaDevices?.getDisplayMedia !== "function") {
+        console.warn("Screen share not supported in this browser");
+        return;
+      }
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true } as DisplayMediaStreamOptions);
       screenStreamRef.current = screenStream;
       const screenTrack = screenStream.getVideoTracks()[0];
       screenTrackRef.current = screenTrack;
       const camTrack = localStream?.getVideoTracks()[0];
-      peersRef.current.forEach((p) => { if (camTrack) p.replaceTrack(camTrack, screenTrack, screenStream); });
+      if (camTrack) {
+        peersRef.current.forEach((p) => p.replaceTrack(camTrack, screenTrack, screenStream));
+      }
       screenTrack.onended = () => toggleScreenShare();
       setIsScreenSharing(true);
       socketService.setScreenShare(roomId, true);
-    } catch {}
+    } catch (err) {
+      console.error("Screen share failed:", err);
+    }
     showControls();
   };
 
