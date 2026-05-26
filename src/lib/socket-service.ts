@@ -167,6 +167,10 @@ class SocketService {
         this.socket.on('video:screen-share', (data: { userId: string; sharing: boolean }) => {
           this.emit('video_screen_share', data);
         });
+
+        this.socket.on('video:toggle-video', (data: { userId: string; videoOff: boolean }) => {
+          this.emit('video_toggle', data);
+        });
       } catch (error) {
         console.error('💥 Socket connection exception:', error);
         this.isConnecting = false;
@@ -299,6 +303,12 @@ class SocketService {
     }
   }
 
+  setVideoToggle(roomId: string, videoOff: boolean): void {
+    if (this.socket?.connected) {
+      this.socket.emit('video:toggle-video', { roomId, videoOff });
+    }
+  }
+
   onVideoUserJoined(callback: (data: { userId: string; name: string }) => void): () => void {
     this.on('video_user_joined', callback);
     return () => this.off('video_user_joined', callback);
@@ -327,6 +337,11 @@ class SocketService {
   onScreenShare(callback: (data: { userId: string; sharing: boolean }) => void): () => void {
     this.on('video_screen_share', callback);
     return () => this.off('video_screen_share', callback);
+  }
+
+  onVideoToggle(callback: (data: { userId: string; videoOff: boolean }) => void): () => void {
+    this.on('video_toggle', callback);
+    return () => this.off('video_toggle', callback);
   }
 
   isConnected(): boolean {

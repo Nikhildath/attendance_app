@@ -3,6 +3,7 @@ import { socketService } from "@/lib/socket-service";
 import { X, Mic, MicOff, Video, VideoOff, Monitor, Phone, PhoneOff, MessageSquare, Maximize2, Minimize2, Users, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Peer from "simple-peer";
+import { Avatar2D } from "./Avatar2D";
 
 interface VideoCallProps {
   roomId: string;
@@ -21,6 +22,10 @@ type PeerEntry = {
   stream?: MediaStream;
 };
 
+function getProfilePic(profiles: VideoCallProps["profiles"], id: string, name: string): string | null {
+  return profiles?.find((p) => p.id === id)?.avatar_url || null;
+}
+
 export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEnd, onReady, profiles }: VideoCallProps) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [peers, setPeers] = useState<PeerEntry[]>([]);
@@ -35,6 +40,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   const [chatInput, setChatInput] = useState("");
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [remoteVideoOff, setRemoteVideoOff] = useState<Map<string, boolean>>(new Map());
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const peersRef = useRef<Map<string, Peer.Instance>>(new Map());
@@ -42,7 +48,6 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   const containerRef = useRef<HTMLDivElement>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
-  const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const startHideTimer = useCallback(() => {
@@ -105,11 +110,16 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
           if (prev.some((p) => p.peerId === targetId)) return prev;
           return [...prev, { peerId: targetId, peer, stream: remoteStream }];
         });
+        const vt = remoteStream.getVideoTracks()[0];
+        if (vt && !vt.enabled) {
+          setRemoteVideoOff((prev) => { const m = new Map(prev); m.set(targetId, true); return m; });
+        }
       });
 
       peer.on("close", () => {
         setPeers((prev) => prev.filter((p) => p.peerId !== targetId));
         peersRef.current.delete(targetId);
+        setRemoteVideoOff((prev) => { const m = new Map(prev); m.delete(targetId); return m; });
       });
 
       peersRef.current.set(targetId, peer);
@@ -143,6 +153,13 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
         peer.destroy();
         peersRef.current.delete(data.userId);
         setPeers((prev) => prev.filter((p) => p.peerId !== data.userId));
+        setRemoteVideoOff((prev) => { const m = new Map(prev); m.delete(data.userId); return m; });
+      }
+    });
+
+    const unsubVideoToggle = socketService.onVideoToggle((data) => {
+      if (data.userId !== userId) {
+        setRemoteVideoOff((prev) => { const m = new Map(prev); m.set(data.userId, data.videoOff); return m; });
       }
     });
 
@@ -150,6 +167,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       unsubJoined();
       unsubSignal();
       unsubLeft();
+      unsubVideoToggle();
     };
   }, [localStream, userId, createPeer]);
 
@@ -162,6 +180,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   const toggleVideo = () => {
     localStream?.getVideoTracks().forEach((t) => (t.enabled = isVideoOff));
     setIsVideoOff(!isVideoOff);
+    socketService.setVideoToggle(roomId, !isVideoOff);
     showControls();
   };
 
@@ -221,6 +240,14 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
     showControls();
   };
 
+  const getPeerName = (pid: string) => peerNamesRef.current.get(pid) || pid.slice(0, 8);
+
+  const PeerAvatar = ({ pid, name }: { pid: string; name: string }) => (
+    <Avatar2D name={name} size={48} src={getProfilePic(profiles, pid, name)} />
+  );
+
+  const myAvatarUrl = getProfilePic(profiles, userId, userName);
+
   const remotePeers = peers.filter((p) => p.stream);
 
   return (
@@ -266,22 +293,34 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       <div className="flex-1 relative overflow-hidden">
         <div className={cn("grid gap-2 md:gap-4 h-full p-2 md:p-4", remotePeers.length <= 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-2")}>
           {/* Remote videos */}
-          {remotePeers.map((p) => (
-            <div key={p.peerId} className="relative rounded-xl md:rounded-2xl overflow-hidden bg-zinc-900 min-h-0">
-              <video ref={(el) => { if (el && p.stream) el.srcObject = p.stream; }} autoPlay playsInline className="w-full h-full object-cover" />
-              <div className="absolute bottom-2 left-2 px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg bg-black/50 text-white text-[10px] md:text-xs font-medium backdrop-blur-sm">
-                {peerNamesRef.current.get(p.peerId) || p.peerId.slice(0, 8)}
+          {remotePeers.map((p) => {
+            const rName = getPeerName(p.peerId);
+            const rVideoOff = remoteVideoOff.get(p.peerId) || false;
+            return (
+              <div key={p.peerId} className="relative rounded-xl md:rounded-2xl overflow-hidden bg-zinc-900 min-h-0">
+                {rVideoOff ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-zinc-800">
+                    <PeerAvatar pid={p.peerId} name={rName} />
+                  </div>
+                ) : (
+                  <video ref={(el) => { if (el && p.stream) el.srcObject = p.stream; }} autoPlay playsInline className="w-full h-full object-cover" />
+                )}
+                <div className="absolute bottom-2 left-2 px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg bg-black/50 text-white text-[10px] md:text-xs font-medium backdrop-blur-sm flex items-center gap-1.5">
+                  <Avatar2D name={rName} size={14} src={getProfilePic(profiles, p.peerId, rName)} />
+                  {rName}
+                  {rVideoOff && <VideoOff size={10} className="text-red-400" />}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Local video (PiP when remote exists) */}
           <div
             className={cn(
               "relative rounded-xl md:rounded-2xl overflow-hidden bg-zinc-900",
               remotePeers.length > 0
-                ? "absolute bottom-16 md:bottom-20 right-2 md:right-4 w-32 h-44 md:w-48 md:h-40 z-20 shadow-2xl border-2 border-white/20"
-                : ""
+                ? "absolute bottom-16 md:bottom-20 right-2 md:right-4 w-32 h-44 md:w-48 md:h-40 z-20 shadow-2xl border-2 border-green-500/40"
+                : "border-2 border-green-500/30"
             )}
           >
             {mediaError ? (
@@ -290,27 +329,27 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
               </div>
             ) : (
               <>
-                <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-                <div className="absolute bottom-1 left-1 md:bottom-2 md:left-2 px-1 md:px-2 py-0.5 md:py-1 rounded-lg bg-black/50 text-white text-[9px] md:text-[10px] font-medium backdrop-blur-sm">
+                {isVideoOff ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-zinc-800">
+                    <Avatar2D name={userName} size={48} src={myAvatarUrl} />
+                  </div>
+                ) : (
+                  <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                )}
+                <div className="absolute bottom-1 left-1 md:bottom-2 md:left-2 px-1 md:px-2 py-0.5 md:py-1 rounded-lg bg-black/50 text-white text-[9px] md:text-[10px] font-medium backdrop-blur-sm flex items-center gap-1">
+                  <Avatar2D name={userName} size={12} src={myAvatarUrl} />
                   {isScreenSharing ? "Screen" : "You"}
                 </div>
-                {isVideoOff && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-zinc-800">
-                    <div className="h-10 w-10 md:h-14 md:w-14 rounded-full bg-zinc-700 flex items-center justify-center">
-                      <span className="text-white text-sm md:text-xl font-bold">{userName[0]?.toUpperCase()}</span>
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>
 
-          {/* Waiting screen */}
+          {/* Waiting screen with profile pic */}
           {remotePeers.length === 0 && !mediaError && (
             <div className="col-span-full flex items-center justify-center">
               <div className="text-center px-4">
-                <div className="h-20 w-20 md:h-24 md:w-24 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-3 md:mb-4 animate-pulse">
-                  <span className="text-white text-3xl md:text-4xl font-bold">{userName[0]?.toUpperCase()}</span>
+                <div className="mx-auto mb-3 md:mb-4">
+                  <Avatar2D name={userName} size={80} src={myAvatarUrl} />
                 </div>
                 <p className="text-white/60 text-sm md:text-lg font-medium">Waiting for others to join...</p>
                 <p className="text-white/40 text-[10px] md:text-sm mt-1 hidden sm:block">Share the meeting ID: {roomId.slice(0, 8)}</p>
@@ -401,9 +440,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
                   }}
                   className="flex w-full items-center gap-3 rounded-xl p-3 hover:bg-white/5 transition-colors text-left"
                 >
-                  <div className="h-9 w-9 rounded-xl bg-primary/20 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                    {p.name[0]?.toUpperCase()}
-                  </div>
+                  <Avatar2D name={p.name} size={36} src={p.avatar_url} />
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{p.name}</p>
                     <p className="text-white/50 text-[10px] font-medium">{p.role || "Employee"}</p>

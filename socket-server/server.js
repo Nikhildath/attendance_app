@@ -593,6 +593,15 @@ io.on('connection', (socket) => {
       sharing: data.sharing,
     });
   });
+
+  // Video toggle notification (camera on/off)
+  socket.on('video:toggle-video', (data) => {
+    if (!socket.userId || !data?.roomId) return;
+    socket.to(data.roomId).emit('video:toggle-video', {
+      userId: socket.userId,
+      videoOff: data.videoOff,
+    });
+  });
 });
 
 // Start server

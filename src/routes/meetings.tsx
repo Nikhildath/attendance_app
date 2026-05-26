@@ -12,6 +12,7 @@ import { VideoCall } from "@/components/common/VideoCall";
 import { IncomingCallScreen } from "@/components/common/IncomingCallScreen";
 import { registerPushNotifications } from "@/lib/push-notifications";
 import { useCall } from "@/lib/call-context";
+import { Avatar2D } from "@/components/common/Avatar2D";
 
 export const Route = createFileRoute("/meetings")({
   head: () => ({
@@ -348,9 +349,7 @@ function MeetingsPage() {
             {profiles.filter((p) => p.id !== profile?.id).map((p) => (
               <div key={p.id} className="flex items-center justify-between rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-primary text-sm">
-                    {p.name[0]?.toUpperCase()}
-                  </div>
+                  <Avatar2D name={p.name} size={40} src={p.avatar_url} />
                   <div>
                     <div className="text-sm font-bold">{p.name}</div>
                     <div className="text-[11px] text-muted-foreground">{p.role}</div>
