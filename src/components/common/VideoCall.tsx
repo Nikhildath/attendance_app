@@ -4,6 +4,8 @@ import { X, Mic, MicOff, Video, VideoOff, Monitor, Phone, PhoneOff, MessageSquar
 import { cn } from "@/lib/utils";
 import Peer from "simple-peer";
 import { Avatar2D } from "./Avatar2D";
+import { Capacitor } from "@capacitor/core";
+import { ScreenShare } from "@/lib/screen-share";
 
 interface VideoCallProps {
   roomId: string;
@@ -49,6 +51,10 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const screenCanvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasStreamRef = useRef<MediaStream | null>(null);
+  const nativeScreenCleanupRef = useRef<(() => void) | null>(null);
+  const isNative = Capacitor.isNativePlatform();
 
   const startHideTimer = useCallback(() => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
@@ -117,10 +123,16 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   const stopAll = useCallback(() => {
     localStream?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    canvasStreamRef.current?.getTracks().forEach((t) => t.stop());
+    if (isNative && nativeScreenCleanupRef.current) {
+      nativeScreenCleanupRef.current();
+      nativeScreenCleanupRef.current = null;
+      ScreenShare.stop().catch(() => {});
+    }
     peersRef.current.forEach((p) => p.destroy());
     peersRef.current.clear();
     socketService.leaveVideoRoom(roomId);
-  }, [localStream, roomId]);
+  }, [localStream, roomId, isNative]);
 
   const createPeer = useCallback(
     (targetId: string, initiator: boolean, stream: MediaStream) => {
@@ -209,39 +221,107 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
     showControls();
   };
 
-  const toggleScreenShare = async () => {
-    if (isScreenSharing) {
-      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
-      screenStreamRef.current = null;
-      const videoTrack = localStream?.getVideoTracks()[0];
-      const oldScreenTrack = screenTrackRef.current;
-      screenTrackRef.current = null;
-      if (oldScreenTrack && videoTrack) {
-        peersRef.current.forEach((p) => p.replaceTrack(oldScreenTrack, videoTrack, localStream!));
-      }
-      setIsScreenSharing(false);
-      socketService.setScreenShare(roomId, false);
-      showControls();
-      return;
-    }
+  const startNativeScreenShare = async () => {
     try {
-      if (typeof navigator.mediaDevices?.getDisplayMedia !== "function") {
-        console.warn("Screen share not supported in this browser");
-        return;
-      }
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true } as DisplayMediaStreamOptions);
-      screenStreamRef.current = screenStream;
-      const screenTrack = screenStream.getVideoTracks()[0];
+      await ScreenShare.start({ width: 720, height: 1280 });
+
+      const canvas = screenCanvasRef.current;
+      if (!canvas) { console.warn("Screen canvas not found"); return; }
+      canvas.width = 720;
+      canvas.height = 1280;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { console.warn("Canvas 2D context unavailable"); return; }
+
+      const stream = canvas.captureStream(5);
+      canvasStreamRef.current = stream;
+      const screenTrack = stream.getVideoTracks()[0];
+      if (!screenTrack) { console.warn("Canvas stream has no video track"); return; }
       screenTrackRef.current = screenTrack;
+      screenStreamRef.current = stream;
+
       const camTrack = localStream?.getVideoTracks()[0];
       if (camTrack) {
-        peersRef.current.forEach((p) => p.replaceTrack(camTrack, screenTrack, screenStream));
+        peersRef.current.forEach((p) => p.replaceTrack(camTrack, screenTrack, stream));
       }
-      screenTrack.onended = () => toggleScreenShare();
+
+      nativeScreenCleanupRef.current = await ScreenShare.addListener("screenFrame", (frame) => {
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = frame.data;
+      });
+
       setIsScreenSharing(true);
       socketService.setScreenShare(roomId, true);
     } catch (err) {
-      console.error("Screen share failed:", err);
+      console.error("Native screen share failed:", err);
+    }
+  };
+
+  const stopNativeScreenShare = () => {
+    if (nativeScreenCleanupRef.current) {
+      nativeScreenCleanupRef.current();
+      nativeScreenCleanupRef.current = null;
+    }
+    ScreenShare.stop().catch(() => {});
+    canvasStreamRef.current?.getTracks().forEach((t) => t.stop());
+    canvasStreamRef.current = null;
+    const videoTrack = localStream?.getVideoTracks()[0];
+    const oldScreenTrack = screenTrackRef.current;
+    screenTrackRef.current = null;
+    screenStreamRef.current = null;
+    if (oldScreenTrack && videoTrack) {
+      peersRef.current.forEach((p) => p.replaceTrack(oldScreenTrack, videoTrack, localStream!));
+    }
+    setIsScreenSharing(false);
+    socketService.setScreenShare(roomId, false);
+  };
+
+  const toggleScreenShare = async () => {
+    if (isScreenSharing) {
+      if (isNative) {
+        stopNativeScreenShare();
+      } else {
+        screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+        screenStreamRef.current = null;
+        const videoTrack = localStream?.getVideoTracks()[0];
+        const oldScreenTrack = screenTrackRef.current;
+        screenTrackRef.current = null;
+        if (oldScreenTrack && videoTrack) {
+          peersRef.current.forEach((p) => p.replaceTrack(oldScreenTrack, videoTrack, localStream!));
+        }
+        setIsScreenSharing(false);
+        socketService.setScreenShare(roomId, false);
+      }
+      showControls();
+      return;
+    }
+
+    if (isNative) {
+      await startNativeScreenShare();
+    } else {
+      try {
+        if (typeof navigator.mediaDevices?.getDisplayMedia !== "function") {
+          console.warn("Screen share not supported in this browser");
+          showControls();
+          return;
+        }
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true } as DisplayMediaStreamOptions);
+        screenStreamRef.current = screenStream;
+        const screenTrack = screenStream.getVideoTracks()[0];
+        screenTrackRef.current = screenTrack;
+        const camTrack = localStream?.getVideoTracks()[0];
+        if (camTrack) {
+          peersRef.current.forEach((p) => p.replaceTrack(camTrack, screenTrack, screenStream));
+        }
+        screenTrack.onended = () => toggleScreenShare();
+        setIsScreenSharing(true);
+        socketService.setScreenShare(roomId, true);
+      } catch (err) {
+        console.error("Screen share failed:", err);
+      }
     }
     showControls();
   };
@@ -460,6 +540,9 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
           </form>
         </div>
       )}
+
+      {/* Hidden canvas for native screen capture */}
+      <canvas ref={screenCanvasRef} className="absolute left-[-9999px] top-0" width="720" height="1280" />
 
       {/* Add Participants Panel */}
       {showAddPeople && profiles && (
