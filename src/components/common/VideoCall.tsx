@@ -6,6 +6,7 @@ import Peer from "simple-peer";
 import { Avatar2D } from "./Avatar2D";
 import { Capacitor } from "@capacitor/core";
 import { ScreenShare } from "@/lib/screen-share";
+import { MediaPermissions } from "@/lib/media-permissions";
 
 interface VideoCallProps {
   roomId: string;
@@ -67,6 +68,19 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   }, [startHideTimer]);
 
   const startCall = useCallback(async () => {
+    if (isNative) {
+      try {
+        const permResult = await MediaPermissions.request();
+        if (!permResult.allGranted) {
+          setMediaError("Camera or microphone permission denied. Please allow them in your device Settings and try again.");
+          socketService.joinVideoRoom(roomId, userName);
+          onReady?.();
+          return;
+        }
+      } catch {
+        // plugin not available, fall through
+      }
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 480 } },
