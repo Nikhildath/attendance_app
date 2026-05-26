@@ -11,6 +11,7 @@ interface VideoCallProps {
   isDirect?: boolean;
   calleeName?: string;
   onEnd: () => void;
+  onReady?: () => void;
 }
 
 type PeerEntry = {
@@ -19,7 +20,7 @@ type PeerEntry = {
   stream?: MediaStream;
 };
 
-export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEnd }: VideoCallProps) {
+export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEnd, onReady }: VideoCallProps) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [peers, setPeers] = useState<PeerEntry[]>([]);
   const [isMuted, setIsMuted] = useState(false);
@@ -61,9 +62,11 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
         setLocalStream(stream);
         if (localVideoRef.current) localVideoRef.current.srcObject = stream;
         socketService.joinVideoRoom(roomId, userName);
+        onReady?.();
       } catch (err: any) {
         console.error("Failed to get media:", err);
         setMediaError(err.message || "Camera/mic access denied. Check permissions.");
+        onReady?.();
       }
     };
     startCall();

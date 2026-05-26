@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { VideoCall } from "@/components/common/VideoCall";
 import { IncomingCallScreen } from "@/components/common/IncomingCallScreen";
 import { registerPushNotifications } from "@/lib/push-notifications";
+import { useCall } from "@/lib/call-context";
 
 export const Route = createFileRoute("/meetings")({
   head: () => ({
@@ -50,6 +51,7 @@ function MeetingsPage() {
   const { profile, isAdmin, isManager } = useAuth();
   const navigate = useNavigate();
   const search = useSearch({ from: Route.id });
+  const { setInCall } = useCall();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -450,7 +452,9 @@ function MeetingsPage() {
               socketService.endCall(activeCall.calleeId);
             }
             setActiveCall(null);
+            setInCall(false);
           }}
+          onReady={() => setInCall(true)}
         />
       )}
     </div>

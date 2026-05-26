@@ -7,6 +7,7 @@ import { Link, useLocation, useRouter } from "@tanstack/react-router";
 import { LayoutDashboard, Zap, Calendar, Users, Settings, Bell, Search, Radar, Shield, Sparkles, Grid3X3, Clock, FileText, BarChart3, MapPinned, MessageSquare, CalendarRange, Wallet, X, Video } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth";
+import { useCall } from "@/lib/call-context";
 
 const extraMobileNav = [
   { to: "/team", label: "Team", icon: Users },
@@ -30,6 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const router = useRouter();
   const { profile } = useAuth();
+  const { isInCall } = useCall();
 
   useEffect(() => {
     setShowMobileMenu(false);
@@ -47,12 +49,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.04)_1px,transparent_1px)] bg-[size:100px_100px] dark:bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)]" />
       </div>
 
-      {!isMobile && (
+      {!isMobile && !isInCall && (
         <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       )}
 
       <AnimatePresence>
-        {isMobile && showMobileMenu && (
+        {isMobile && showMobileMenu && !isInCall && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -80,8 +82,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           !isMobile && (collapsed ? "pl-[72px]" : "pl-64")
         )}
       >
-        <Topbar onMenu={() => setShowMobileMenu(true)} />
-        <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-1 px-3 py-5 pb-[10rem] md:px-8 md:py-8 md:pb-8">
+        {!isInCall && <Topbar onMenu={() => setShowMobileMenu(true)} />}
+        <div className={cn("mx-auto flex w-full min-w-0 max-w-[1600px] flex-1 px-3 py-5 md:px-8 md:py-8", isInCall ? "pb-0" : "pb-[10rem] md:pb-8")}>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -94,7 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* FLASHY Animated Mobile Navigation */}
-      {isMobile && (
+      {isMobile && !isInCall && (
         <nav className="group fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex h-[4.6rem] w-[calc(100%-1rem)] max-w-md -translate-x-1/2 items-center justify-between overflow-visible rounded-[2rem] border border-border/70 bg-card/88 px-2 shadow-[0_25px_80px_-15px_rgba(15,23,42,0.18)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0a0a0a]/60 dark:shadow-[0_25px_80px_-15px_rgba(var(--primary-rgb),0.3)] sm:bottom-6 sm:h-20 sm:w-[92%] sm:px-3">
            {/* Animated Scanning Beam */}
            <motion.div 

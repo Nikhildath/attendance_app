@@ -11,6 +11,7 @@ import { LiveTracker } from "@/components/common/LiveTracker";
 import { UpdateChecker } from "@/components/common/UpdateChecker";
 import { PWAInstallPrompt } from "@/components/common/PWAInstallPrompt";
 import { NotificationProvider } from "@/lib/notification-service";
+import { CallProvider } from "@/lib/call-context";
 
 function NotFoundComponent() {
   return (
@@ -58,12 +59,14 @@ function RootComponent() {
       <AuthProvider>
         <SettingsProvider>
           <BranchProvider>
-            <NotificationProviderShell>
-              <RootContent />
-              <LiveTracker />
-              <UpdateChecker />
-              <Toaster />
-            </NotificationProviderShell>
+            <CallProvider>
+              <NotificationProviderShell>
+                <RootContent />
+                <LiveTracker />
+                <UpdateChecker />
+                <Toaster />
+              </NotificationProviderShell>
+            </CallProvider>
           </BranchProvider>
         </SettingsProvider>
       </AuthProvider>
