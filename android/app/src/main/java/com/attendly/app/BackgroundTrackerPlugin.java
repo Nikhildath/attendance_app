@@ -64,16 +64,25 @@ public class BackgroundTrackerPlugin extends Plugin {
         try {
             Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
             intent.setData(Uri.parse("package:" + getContext().getPackageName()));
-            getActivity().startActivity(intent);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
             call.resolve();
         } catch (Exception e) {
-            // Fallback: open general battery optimization settings
             try {
                 Intent fallback = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-                getActivity().startActivity(fallback);
+                fallback.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(fallback);
                 call.resolve();
             } catch (Exception e2) {
-                call.reject("Failed to open battery optimization settings: " + e2.getMessage());
+                try {
+                    // Last resort: open main Settings app page
+                    Intent last = new Intent(Settings.ACTION_SETTINGS);
+                    last.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    getContext().startActivity(last);
+                    call.resolve();
+                } catch (Exception e3) {
+                    call.reject("Could not open battery settings: " + e3.getMessage());
+                }
             }
         }
     }

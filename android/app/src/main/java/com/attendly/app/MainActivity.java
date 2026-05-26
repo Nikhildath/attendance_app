@@ -9,5 +9,6 @@ public class MainActivity extends BridgeActivity {
     super.onCreate(savedInstanceState);
     registerPlugin(MediaPermissionsPlugin.class);
     registerPlugin(ScreenSharePlugin.class);
+    registerPlugin(BackgroundTrackerPlugin.class);
   }
 }
