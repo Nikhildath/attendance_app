@@ -55,7 +55,7 @@ function MeetingsPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"upcoming" | "past" | "calendar">("upcoming");
   const [showSchedule, setShowSchedule] = useState(false);
-  const [activeCall, setActiveCall] = useState<{ roomId: string; isDirect: boolean; calleeName?: string } | null>(null);
+  const [activeCall, setActiveCall] = useState<{ roomId: string; isDirect: boolean; calleeName?: string; calleeId?: string } | null>(null);
   const [incomingCall, setIncomingCall] = useState<{ callerName: string; callerId: string; roomId: string } | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [canStartCall, setCanStartCall] = useState(false);
@@ -209,7 +209,7 @@ function MeetingsPage() {
   const startDirectCall = (targetProfile: Profile) => {
     const roomName = crypto.randomUUID();
     socketService.initiateDirectCall(targetProfile.id, profile!.name, roomName);
-    setActiveCall({ roomId: roomName, isDirect: true, calleeName: targetProfile.name });
+    setActiveCall({ roomId: roomName, isDirect: true, calleeName: targetProfile.name, calleeId: targetProfile.id });
   };
 
   const handleAcceptIncoming = (roomId: string) => {
@@ -445,7 +445,12 @@ function MeetingsPage() {
           userName={profile.name}
           isDirect={activeCall.isDirect}
           calleeName={activeCall.calleeName}
-          onEnd={() => setActiveCall(null)}
+          onEnd={() => {
+            if (activeCall.isDirect && activeCall.calleeId) {
+              socketService.endCall(activeCall.calleeId);
+            }
+            setActiveCall(null);
+          }}
         />
       )}
     </div>

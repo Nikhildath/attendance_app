@@ -267,6 +267,7 @@ io.use(async (socket, next) => {
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.userId}`);
   connectedUsers.set(socket.userId, socket.id);
+  socket.join(socket.userId); // Join personal room for direct messaging
 
   // Request all staff locations
   socket.on('request_staff_locations', async () => {
