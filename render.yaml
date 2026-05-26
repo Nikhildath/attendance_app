@@ -1,0 +1,10 @@
+# Socket.io server only (no frontend) — deploy this on Render Free
+services:
+  - type: web
+    name: attendance-socket-server
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20

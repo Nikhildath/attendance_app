@@ -1,0 +1,12 @@
+# Standalone Socket.io Server (separate from frontend)
+# Deploy this if you want the socket server on its own Render service.
+# Uses server-config.js from the parent directory for all config.
+services:
+  - type: web
+    name: attendance-socket-server
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
