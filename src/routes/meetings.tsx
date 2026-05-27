@@ -185,16 +185,13 @@ function MeetingsPage() {
     setInCall(true);
   };
 
-  const startDirectCall = async (targetProfile: Profile) => {
+  const startDirectCall = (targetProfile: Profile) => {
     const roomName = `direct-${profile!.id}-${targetProfile.id}-${Date.now()}`;
-    // Ensure socket is connected before emitting
+    // Kick off socket connection if not connected (don't block the call on it)
     if (!socketService.isConnected()) {
-      try {
-        await socketService.connect(SOCKET_URL, '', profile!.id);
-      } catch {
-        console.warn("[DirectCall] Socket connection failed");
-        return;
-      }
+      socketService.connect(SOCKET_URL, '', profile!.id).catch(() =>
+        console.warn("[DirectCall] Socket connection failed, event may not reach callee")
+      );
     }
     socketService.initiateDirectCall(targetProfile.id, profile!.name, roomName);
     setActiveCall({ roomId: roomName, calleeName: targetProfile.name, calleeId: targetProfile.id });

@@ -54,8 +54,25 @@ class SocketService {
   private listeners: Map<string, Set<Function>> = new Map();
   private isConnecting = false;
   private connectionPromise: Promise<void> | null = null;
+  private pendingEmits: Array<{ event: string; data: any }> = [];
 
-  connect(url: string, token: string, userId?: string): Promise<void> {
+  private safeEmit(event: string, data: any): void {
+    if (this.socket?.connected) {
+      this.socket.emit(event, data);
+    } else {
+      this.pendingEmits.push({ event, data });
+    }
+  }
+
+  private flushPendingEmits(): void {
+    if (!this.socket?.connected) return;
+    const pending = this.pendingEmits.splice(0);
+    for (const { event, data } of pending) {
+      this.socket.emit(event, data);
+    }
+  }
+
+  connect(url: string, token: string, userId?: string, timeoutMs = 8000): Promise<void> {
     if (this.socket?.connected) {
       return Promise.resolve();
     }
@@ -78,6 +95,13 @@ class SocketService {
         const auth: any = {};
         if (token) auth.token = token;
         if (userId) auth.userId = userId;
+
+        let timedOut = false;
+        const timer = setTimeout(() => {
+          timedOut = true;
+          this.isConnecting = false;
+          reject(new Error('Socket connection timed out'));
+        }, timeoutMs);
         
         this.socket = io(socketUrl, {
           auth,
@@ -89,8 +113,11 @@ class SocketService {
         });
 
         this.socket.on('connect', () => {
+          clearTimeout(timer);
+          if (timedOut) return;
           console.log('✅ Socket connected successfully:', this.socket?.id);
           this.isConnecting = false;
+          this.flushPendingEmits();
           this.emit('connected', this.socket?.id);
           resolve();
         });
@@ -101,10 +128,12 @@ class SocketService {
         });
 
         this.socket.on('connect_error', (error: any) => {
+          if (timedOut) return;
           console.error('⚠️ Socket connection error:', error.message || error);
           this.emit('connection_error', error);
           if (this.isConnecting) {
             this.isConnecting = false;
+            clearTimeout(timer);
             reject(error);
           }
         });
@@ -190,15 +219,11 @@ class SocketService {
 
   // Location tracking
   updateLocation(location: LocationUpdate): void {
-    if (this.socket?.connected) {
-      this.socket.emit('location_update', location);
-    }
+    this.safeEmit('location_update', location);
   }
 
   requestStaffLocations(): void {
-    if (this.socket?.connected) {
-      this.socket.emit('request_staff_locations');
-    }
+    this.safeEmit('request_staff_locations');
   }
 
   onStaffLocationUpdate(callback: (data: StaffLocation) => void): () => void {
@@ -228,27 +253,19 @@ class SocketService {
 
   // Chat methods
   joinChatRoom(roomId: string): void {
-    if (this.socket?.connected) {
-      this.socket.emit('chat:join_room', roomId);
-    }
+    this.safeEmit('chat:join_room', roomId);
   }
 
   leaveChatRoom(roomId: string): void {
-    if (this.socket?.connected) {
-      this.socket.emit('chat:leave_room', roomId);
-    }
+    this.safeEmit('chat:leave_room', roomId);
   }
 
   sendChatMessage(data: ChatMessageData): void {
-    if (this.socket?.connected) {
-      this.socket.emit('chat:send_message', data);
-    }
+    this.safeEmit('chat:send_message', data);
   }
 
   emitTyping(data: TypingData): void {
-    if (this.socket?.connected) {
-      this.socket.emit('chat:typing', data);
-    }
+    this.safeEmit('chat:typing', data);
   }
 
   onChatMessage(callback: (data: ChatMessageData) => void): () => void {
@@ -268,45 +285,31 @@ class SocketService {
 
   // Video call methods
   joinVideoRoom(roomId: string, name: string): void {
-    if (this.socket?.connected) {
-      this.socket.emit('video:join-room', { roomId, name });
-    }
+    this.safeEmit('video:join-room', { roomId, name });
   }
 
   leaveVideoRoom(roomId: string): void {
-    if (this.socket?.connected) {
-      this.socket.emit('video:leave-room', { roomId });
-    }
+    this.safeEmit('video:leave-room', { roomId });
   }
 
   sendVideoSignal(to: string, signal: any, name: string): void {
-    if (this.socket?.connected) {
-      this.socket.emit('video:signal', { to, signal, name });
-    }
+    this.safeEmit('video:signal', { to, signal, name });
   }
 
   initiateDirectCall(to: string, name: string, roomId: string): void {
-    if (this.socket?.connected) {
-      this.socket.emit('video:direct-call', { to, name, roomId });
-    }
+    this.safeEmit('video:direct-call', { to, name, roomId });
   }
 
   endCall(to: string): void {
-    if (this.socket?.connected) {
-      this.socket.emit('video:end-call', { to });
-    }
+    this.safeEmit('video:end-call', { to });
   }
 
   setScreenShare(roomId: string, sharing: boolean): void {
-    if (this.socket?.connected) {
-      this.socket.emit('video:screen-share', { roomId, sharing });
-    }
+    this.safeEmit('video:screen-share', { roomId, sharing });
   }
 
   setVideoToggle(roomId: string, videoOff: boolean): void {
-    if (this.socket?.connected) {
-      this.socket.emit('video:toggle-video', { roomId, videoOff });
-    }
+    this.safeEmit('video:toggle-video', { roomId, videoOff });
   }
 
   onVideoUserJoined(callback: (data: { userId: string; name: string }) => void): () => void {
