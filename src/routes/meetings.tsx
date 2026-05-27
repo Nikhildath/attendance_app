@@ -188,7 +188,7 @@ function MeetingsPage() {
   const startDirectCall = (targetProfile: Profile) => {
     const roomName = `direct-${profile!.id}-${targetProfile.id}-${Date.now()}`;
     socketService.initiateDirectCall(targetProfile.id, profile!.name, roomName);
-    setActiveCall({ roomId: roomName, calleeName: targetProfile.name });
+    setActiveCall({ roomId: roomName, calleeName: targetProfile.name, calleeId: targetProfile.id });
     setInCall(true);
   };
 

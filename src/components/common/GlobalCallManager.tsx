@@ -36,7 +36,7 @@ export function GlobalCallManager() {
   }, [profile]);
 
   const handleAccept = (roomId: string) => {
-    setActiveCall({ roomId, calleeName: incomingCall?.callerName });
+    setActiveCall({ roomId, calleeName: incomingCall?.callerName, calleeId: incomingCall?.callerId });
     setIncomingCall(null);
     setInCall(true);
   };
@@ -53,13 +53,8 @@ export function GlobalCallManager() {
   };
 
   const handleEndCall = () => {
-    if (activeCall) {
-      // In direct calls, we need to notify the other party
-      // For room calls, leaveVideoRoom is handled inside VideoCall unmount
-      const otherPartyId = activeCall.roomId.split('-').find(id => id !== profile?.id && id !== 'direct');
-      if (otherPartyId) {
-        socketService.endCall(otherPartyId);
-      }
+    if (activeCall?.calleeId) {
+      socketService.endCall(activeCall.calleeId);
     }
     setActiveCall(null);
     setInCall(false);
@@ -84,7 +79,7 @@ export function GlobalCallManager() {
         <VideoCall
           roomId={activeCall.roomId}
           userId={profile.id}
-          userName={profile.full_name || profile.username || "Staff Member"}
+          userName={profile.name || profile.email || "Staff Member"}
           isDirect={!!activeCall.calleeName}
           calleeName={activeCall.calleeName}
           onEnd={handleEndCall}

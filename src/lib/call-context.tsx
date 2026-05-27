@@ -9,6 +9,7 @@ type IncomingCall = {
 type ActiveCall = {
   roomId: string;
   calleeName?: string;
+  calleeId?: string;
 };
 
 type CallContextType = {
