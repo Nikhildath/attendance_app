@@ -47,6 +47,32 @@ function SettingsPage() {
     if (settings) setOrgData({ ...settings });
   }, [settings]);
 
+  const [biometryType, setBiometryType] = useState<string>("none");
+  const [preferredBiometricMode, setPreferredBiometricMode] = useState<string>(() => {
+    return localStorage.getItem("preferred_biometric_mode") || "system";
+  });
+
+  useEffect(() => {
+    const checkBiometrics = async () => {
+      try {
+        const avail = await NativeBiometric.isAvailable();
+        if (avail.isAvailable) {
+          let typeStr = "unknown";
+          const bt = avail.biometryType;
+          if (bt === 1 || bt === 'touch-id' || bt === 'TouchID') typeStr = "fingerprint";
+          else if (bt === 2 || bt === 'face-id' || bt === 'FaceID') typeStr = "face";
+          else if (bt === 3 || bt === 'fingerprint' || bt === 'Fingerprint') typeStr = "fingerprint";
+          else if (bt === 4 || bt === 'face' || bt === 'FaceAuthentication') typeStr = "face";
+          else if (bt === 6 || bt === 'multiple' || bt === 'Multiple') typeStr = "multiple";
+          setBiometryType(typeStr);
+        }
+      } catch (e) {
+        console.warn("Biometrics check failed:", e);
+      }
+    };
+    checkBiometrics();
+  }, []);
+
   const isAdmin = profile?.role?.toLowerCase() === "admin";
   
   const handleUpdateProfile = async () => {
@@ -305,28 +331,89 @@ function SettingsPage() {
                      action="Modify" 
                      onClick={() => toast.info("Password modification dialog will be available in the next security update.")}
                    />
-                   
-                   {/* Passkey Registration Section */}
-                   <div className="p-6 rounded-3xl bg-muted/20 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.03] flex items-center justify-between group hover:bg-muted/30 dark:hover:bg-white/[0.04] transition-all">
-                      <div className="flex items-center gap-5">
-                         <div className="p-3 rounded-xl bg-primary/10 text-primary border border-primary/20">
-                            <Fingerprint className="w-5 h-5" />
+                                     {/* Passkey Registration Section */}
+                    <div className="p-6 rounded-3xl bg-muted/20 dark:bg-white/[0.02] border border-border/30 dark:border-white/[0.03] flex flex-col gap-6 group hover:bg-muted/30 dark:hover:bg-white/[0.04] transition-all">
+                       <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-5">
+                             <div className="p-3 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                                <Fingerprint className="w-5 h-5" />
+                             </div>
+                             <div>
+                                <h4 className="text-sm font-bold uppercase tracking-tight text-foreground/80 dark:text-white/80">Biometric Passkey</h4>
+                                <p className="text-[10px] font-medium text-muted-foreground/60 dark:text-white/20 uppercase tracking-widest mt-1">
+                                   {profile?.passkey_registered 
+                                     ? `Device Identity Active (${biometryType === 'face' ? 'Face Auth' : biometryType === 'fingerprint' ? 'Fingerprint' : 'Active'})` 
+                                     : "Use TouchID / FaceID for attendance"}
+                                </p>
+                             </div>
+                          </div>
+                          <button 
+                            onClick={handleRegisterPasskey}
+                            disabled={loading}
+                            className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all"
+                          >
+                             {loading ? "Synchronizing..." : (profile?.passkey_registered ? "Re-Register" : "Activate")}
+                          </button>
+                       </div>
+
+                       {profile?.passkey_registered && (
+                         <div className="pt-4 border-t border-border/35 dark:border-white/5 space-y-4">
+                           <Label className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground dark:text-white/40 block">Preferred Verification Mode</Label>
+                           <div className="grid grid-cols-3 gap-3">
+                             <button
+                               onClick={() => {
+                                 setPreferredBiometricMode("fingerprint");
+                                 localStorage.setItem("preferred_biometric_mode", "fingerprint");
+                                 toast.success("Punch Verification set to Fingerprint Preferred");
+                               }}
+                               className={cn(
+                                 "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300",
+                                 preferredBiometricMode === "fingerprint"
+                                   ? "bg-primary/10 border-primary/30 text-primary shadow-glow animate-pulse"
+                                   : "bg-muted/10 dark:bg-white/[0.01] border-border/60 dark:border-white/5 text-muted-foreground hover:bg-muted/20"
+                               )}
+                             >
+                               <Fingerprint className="w-4 h-4" />
+                               <span>Fingerprint</span>
+                             </button>
+
+                             <button
+                               onClick={() => {
+                                 setPreferredBiometricMode("face");
+                                 localStorage.setItem("preferred_biometric_mode", "face");
+                                 toast.success("Punch Verification set to Face Recognition Preferred");
+                               }}
+                               className={cn(
+                                 "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300",
+                                 preferredBiometricMode === "face"
+                                   ? "bg-primary/10 border-primary/30 text-primary shadow-glow animate-pulse"
+                                   : "bg-muted/10 dark:bg-white/[0.01] border-border/60 dark:border-white/5 text-muted-foreground hover:bg-muted/20"
+                               )}
+                             >
+                               <Camera className="w-4 h-4" />
+                               <span>Face ID / Auth</span>
+                             </button>
+
+                             <button
+                               onClick={() => {
+                                 setPreferredBiometricMode("system");
+                                 localStorage.setItem("preferred_biometric_mode", "system");
+                                 toast.success("Punch Verification set to System Auto Select");
+                               }}
+                               className={cn(
+                                 "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300",
+                                 preferredBiometricMode === "system"
+                                   ? "bg-primary/10 border-primary/30 text-primary shadow-glow animate-pulse"
+                                   : "bg-muted/10 dark:bg-white/[0.01] border-border/60 dark:border-white/5 text-muted-foreground hover:bg-muted/20"
+                               )}
+                             >
+                               <Sparkles className="w-4 h-4" />
+                               <span>System Choice</span>
+                             </button>
+                           </div>
                          </div>
-                         <div>
-                            <h4 className="text-sm font-bold uppercase tracking-tight text-foreground/80 dark:text-white/80">Biometric Passkey</h4>
-                            <p className="text-[10px] font-medium text-muted-foreground/60 dark:text-white/20 uppercase tracking-widest mt-1">
-                               {profile?.passkey_registered ? "Device Identity Active" : "Use TouchID / FaceID for attendance"}
-                            </p>
-                         </div>
-                      </div>
-                      <button 
-                        onClick={handleRegisterPasskey}
-                        disabled={loading}
-                        className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all"
-                      >
-                         {loading ? "Synchronizing..." : (profile?.passkey_registered ? "Re-Register" : "Activate")}
-                      </button>
-                   </div>
+                       )}
+                    </div>
 
                    <SecurityItem 
                      icon={Smartphone} 

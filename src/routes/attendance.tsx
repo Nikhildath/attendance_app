@@ -19,7 +19,9 @@ import {
   ZapOff,
   Fingerprint, 
   ShieldCheck, 
-  X 
+  X,
+  Camera,
+  Sparkles
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -46,6 +48,35 @@ function AttendancePage() {
   const [activeShift, setActiveShift] = useState<any>(null);
   const [state, setState] = useState<"idle" | "scanning" | "success">("idle");
   const [scanProgress, setScanProgress] = useState(0);
+
+  const [biometryType, setBiometryType] = useState<string>("none");
+  const [preferredBiometricMode, setPreferredBiometricMode] = useState<string>("system");
+
+  useEffect(() => {
+    // Load local storage preference
+    const mode = localStorage.getItem("preferred_biometric_mode") || "system";
+    setPreferredBiometricMode(mode);
+
+    // Detect native biometrics type
+    const detectBiometrics = async () => {
+      try {
+        const avail = await NativeBiometric.isAvailable();
+        if (avail.isAvailable) {
+          let typeStr = "unknown";
+          const bt = avail.biometryType;
+          if (bt === 1 || bt === 'touch-id' || bt === 'TouchID') typeStr = "fingerprint";
+          else if (bt === 2 || bt === 'face-id' || bt === 'FaceID') typeStr = "face";
+          else if (bt === 3 || bt === 'fingerprint' || bt === 'Fingerprint') typeStr = "fingerprint";
+          else if (bt === 4 || bt === 'face' || bt === 'FaceAuthentication') typeStr = "face";
+          else if (bt === 6 || bt === 'multiple' || bt === 'Multiple') typeStr = "multiple";
+          setBiometryType(typeStr);
+        }
+      } catch (e) {
+        console.warn("Could not check biometrics:", e);
+      }
+    };
+    detectBiometrics();
+  }, []);
 
   const loadStatus = async () => {
     if (!profile?.id) return;
@@ -113,12 +144,13 @@ function AttendancePage() {
   }, [profile?.id]);
 
   const verifyBiometric = async () => {
+    const isFace = preferredBiometricMode === "face" || (preferredBiometricMode === "system" && biometryType === "face");
     try {
       await NativeBiometric.verifyIdentity({
         reason: "Verify your identity to mark attendance",
-        title: "Biometric Verification",
+        title: isFace ? "Facial Recognition" : "Biometric Verification",
         subtitle: "Authenticate to continue",
-        description: "Place your finger on the sensor"
+        description: isFace ? "Position your face in front of the front-facing camera" : "Place your finger on the sensor"
       });
       return true;
     } catch (err) {
@@ -325,6 +357,7 @@ function AttendancePage() {
   };
 
   const isPunchedIn = attendance && !attendance.check_out;
+  const isFaceVerification = preferredBiometricMode === "face" || (preferredBiometricMode === "system" && biometryType === "face");
 
   return (
     <div className="space-y-8 md:space-y-10">
@@ -403,7 +436,13 @@ function AttendancePage() {
                           animate={{ scale: 1, opacity: 1 }}
                           className="flex flex-col items-center"
                         >
-                          {isPunchedIn ? <ZapOff className="mb-2 h-14 w-14 text-secondary transition-transform duration-500 group-hover:scale-110 sm:h-20 sm:w-20" /> : <Fingerprint className="mb-2 h-16 w-16 animate-pulse text-primary drop-shadow-[0_0_15px_var(--color-primary)] transition-transform duration-500 group-hover:scale-110 sm:h-24 sm:w-24" />}
+                          {isPunchedIn ? (
+                            <ZapOff className="mb-2 h-14 w-14 text-secondary transition-transform duration-500 group-hover:scale-110 sm:h-20 sm:w-20" />
+                          ) : isFaceVerification ? (
+                            <Camera className="mb-2 h-16 w-16 animate-pulse text-primary drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.6)] transition-transform duration-500 group-hover:scale-110 sm:h-24 sm:w-24" />
+                          ) : (
+                            <Fingerprint className="mb-2 h-16 w-16 animate-pulse text-primary drop-shadow-[0_0_15px_var(--color-primary)] transition-transform duration-500 group-hover:scale-110 sm:h-24 sm:w-24" />
+                          )}
                           <span className="text-base font-black uppercase tracking-[0.16em] sm:text-xl sm:tracking-[0.2em]">{isPunchedIn ? "Check Out" : "Punch In"}</span>
                         </motion.div>
                       </AnimatePresence>
@@ -426,12 +465,18 @@ function AttendancePage() {
                                className="absolute inset-0 border-t-2 border-primary rounded-full"
                              />
                              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <Fingerprint className="h-14 w-14 animate-pulse text-primary sm:h-16 sm:w-16" />
+                                {isFaceVerification ? (
+                                  <Camera className="h-14 w-14 animate-pulse text-primary sm:h-16 sm:w-16" />
+                                ) : (
+                                  <Fingerprint className="h-14 w-14 animate-pulse text-primary sm:h-16 sm:w-16" />
+                                )}
                                 <span className="mt-4 text-[10px] font-black uppercase tracking-[0.3em] text-primary">{scanProgress}%</span>
                              </div>
                           </div>
                           <div className="mt-8 space-y-1 text-center">
-                             <p className="text-[10px] font-black uppercase tracking-[0.5em] text-foreground/40 dark:text-white/40">Neural Sync In Progress</p>
+                             <p className="text-[10px] font-black uppercase tracking-[0.5em] text-foreground/40 dark:text-white/40">
+                                {isFaceVerification ? "Facial Sync In Progress" : "Neural Sync In Progress"}
+                             </p>
                              <p className="text-[8px] font-bold uppercase tracking-widest text-primary/60">Spatio-Temporal Verification</p>
                           </div>
                         </motion.div>
