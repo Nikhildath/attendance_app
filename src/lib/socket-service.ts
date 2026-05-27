@@ -96,9 +96,7 @@ class SocketService {
         if (token) auth.token = token;
         if (userId) auth.userId = userId;
 
-        let timedOut = false;
         const timer = setTimeout(() => {
-          timedOut = true;
           this.isConnecting = false;
           reject(new Error('Socket connection timed out'));
         }, timeoutMs);
@@ -114,7 +112,6 @@ class SocketService {
 
         this.socket.on('connect', () => {
           clearTimeout(timer);
-          if (timedOut) return;
           console.log('✅ Socket connected successfully:', this.socket?.id);
           this.isConnecting = false;
           this.flushPendingEmits();
@@ -128,7 +125,6 @@ class SocketService {
         });
 
         this.socket.on('connect_error', (error: any) => {
-          if (timedOut) return;
           console.error('⚠️ Socket connection error:', error.message || error);
           this.emit('connection_error', error);
           if (this.isConnecting) {
