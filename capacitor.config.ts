@@ -12,6 +12,12 @@ const config: CapacitorConfig = {
       presentationOptions: ["badge", "sound", "alert"],
     },
   },
+  android: {
+    // Allow WebView to prompt for permissions (camera, mic)
+    webContentsDebuggingEnabled: false,
+    // Allow mixed content for WebRTC
+    allowMixedContent: true,
+  },
 };
 
 export default config;
