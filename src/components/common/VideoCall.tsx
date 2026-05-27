@@ -78,60 +78,81 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
     startHideTimer();
   }, [startHideTimer]);
 
-  const ensureSocketConnected = useCallback(async () => {
-    if (socketService.isConnected()) return;
-    // Wait for socket to connect (with timeout)
-    for (let i = 0; i < 50; i++) {
-      await new Promise(r => setTimeout(r, 100));
-      if (socketService.isConnected()) return;
-    }
-    console.warn("🎥 [VideoCall] Socket failed to connect");
-  }, []);
+  const retryMedia = useCallback(() => {
+    setMediaError(null);
+    startCall();
+  }, [startCall]);
 
   const startCall = useCallback(async () => {
     console.log("🎥 [VideoCall] Starting call. isNative:", isNative);
-    await ensureSocketConnected();
-
     if (isNative) {
       try {
+        console.log("🎥 [VideoCall] Requesting native permissions...");
         const permResult = await MediaPermissions.request();
+        console.log("🎥 [VideoCall] Permission result:", permResult);
         if (!permResult.allGranted) {
-          setMediaError("Camera or microphone permission denied.");
+          setMediaError("Camera or microphone permission denied. Please allow them in your device Settings and try again.");
           socketService.joinVideoRoom(roomId, userName);
           onReady?.();
           return;
         }
       } catch (err: any) {
-        console.warn("🎥 [VideoCall] MediaPermissions plugin failed:", err.message);
+        console.warn("🎥 [VideoCall] MediaPermissions plugin failed or not available:", err.message);
       }
     }
 
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("🎥 [VideoCall] navigator.mediaDevices.getUserMedia is not supported");
+      setMediaError("Your browser or device does not support video calls in this context.");
+      onReady?.();
+      return;
+    }
+
     try {
+      console.log("🎥 [VideoCall] Requesting getUserMedia...");
       const constraints = {
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        video: { 
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
         audio: true,
       };
       
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log("🎥 [VideoCall] getUserMedia success, tracks:", stream.getTracks().map(t => t.kind));
       setLocalStream(stream);
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
       socketService.joinVideoRoom(roomId, userName);
+      setMediaError(null);
       onReady?.();
     } catch (err: any) {
-      console.warn("🎥 [VideoCall] Media failed, trying audio-only:", err.message);
+      console.warn("🎥 [VideoCall] Camera unavailable or denied, trying audio-only:", err.message);
       try {
         const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log("🎥 [VideoCall] audio-only getUserMedia success");
         setLocalStream(audioStream);
+        if (localVideoRef.current) localVideoRef.current.srcObject = audioStream;
         setIsVideoOff(true);
         socketService.joinVideoRoom(roomId, userName);
+        setMediaError(null);
         onReady?.();
       } catch (audioErr: any) {
-        setMediaError(`Your microphone and camera are off.`);
+        console.error("🎥 [VideoCall] Both camera and microphone denied/unavailable:", audioErr.message);
+        // CRITICAL FIX: Join the room anyway so the user can see/hear others even if they can't speak/be seen
+        setMediaError(`Your microphone and camera are off. You can still see and hear others.`);
         socketService.joinVideoRoom(roomId, userName);
         onReady?.();
       }
     }
-  }, [roomId, userName, onReady, isNative, ensureSocketConnected]);
+  }, [roomId, userName, onReady, isNative]);
+
+  // Sync stream to video element whenever it changes
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
 
   useEffect(() => {
     startCall();
@@ -139,6 +160,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
     startHideTimer();
     return () => {
       clearInterval(timer);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       stopAll();
     };
   }, [roomId]);
@@ -378,12 +400,25 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
               remotePeers.length > 0 ? "absolute bottom-20 right-4 w-32 h-44 z-20 shadow-2xl" : ""
             )}
           >
-            {isVideoOff ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-zinc-800">
-                <Avatar2D name={userName} size={48} src={myAvatarUrl} />
+            {mediaError ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-zinc-800 p-4 text-center">
+                <div>
+                  <p className="text-white/80 text-xs font-medium mb-3">{mediaError}</p>
+                  <button onClick={retryMedia} className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/80 transition-all active:scale-90">
+                    Retry
+                  </button>
+                </div>
               </div>
             ) : (
-              <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+              <>
+                {isVideoOff ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-zinc-800">
+                    <Avatar2D name={userName} size={48} src={myAvatarUrl} />
+                  </div>
+                ) : (
+                  <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                )}
+              </>
             )}
             <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/50 text-white text-[10px] font-medium backdrop-blur-sm">
               You
