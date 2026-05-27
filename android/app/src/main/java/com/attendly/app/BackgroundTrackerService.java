@@ -24,6 +24,7 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 
 import org.json.JSONObject;
 
@@ -53,6 +54,7 @@ public class BackgroundTrackerService extends Service {
     private long lastPostTime = 0;
     private volatile boolean isTracking = false;
     private volatile boolean isDestroyed = false;
+    public static boolean explicitlyStopped = false;
 
     @Override
     public void onCreate() {
@@ -136,7 +138,9 @@ public class BackgroundTrackerService extends Service {
         if (mainHandler != null) {
             mainHandler.removeCallbacksAndMessages(null);
         }
-        scheduleRestartAlarm();
+        if (!explicitlyStopped) {
+            scheduleRestartAlarm();
+        }
         if (executor != null && !executor.isShutdown()) {
             executor.shutdown();
         }
@@ -221,10 +225,13 @@ public class BackgroundTrackerService extends Service {
     private void startLocationUpdates() {
         if (fusedLocationClient == null) return;
 
-        LocationRequest locationRequest = new LocationRequest();
-        locationRequest.setInterval(10000);
-        locationRequest.setFastestInterval(5000);
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        // Use the modern Builder API (requires play-services-location 21+)
+        LocationRequest locationRequest = new LocationRequest.Builder(
+                Priority.PRIORITY_HIGH_ACCURACY, 10_000L
+        )
+                .setMinUpdateIntervalMillis(5_000L)
+                .setWaitForAccurateLocation(false)
+                .build();
 
         locationCallback = new LocationCallback() {
             @Override
@@ -238,7 +245,11 @@ public class BackgroundTrackerService extends Service {
         };
 
         try {
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
+            fusedLocationClient.requestLocationUpdates(
+                    locationRequest,
+                    locationCallback,
+                    Looper.getMainLooper() // must not be null on API 31+
+            );
         } catch (SecurityException e) {
             e.printStackTrace();
         }
@@ -280,15 +291,31 @@ public class BackgroundTrackerService extends Service {
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
 
+            int batteryLevel = -1;
+            try {
+                android.content.IntentFilter ifilter = new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED);
+                android.content.Intent batteryStatus = registerReceiver(null, ifilter);
+                if (batteryStatus != null) {
+                    int level = batteryStatus.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1);
+                    int scale = batteryStatus.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1);
+                    if (level != -1 && scale != -1) {
+                        batteryLevel = Math.round((level / (float) scale) * 100);
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            String deviceInfo = android.os.Build.MODEL + " | Android " + android.os.Build.VERSION.RELEASE;
+
             JSONObject body = new JSONObject();
             body.put("userId", userId);
             body.put("lat", lat);
             body.put("lng", lng);
             body.put("speed", speed);
             body.put("accuracy", accuracy);
-            body.put("battery", 0);
+            body.put("battery", batteryLevel >= 0 ? batteryLevel : 0);
             body.put("task", "Background tracking");
             body.put("status", "active");
+            body.put("deviceInfo", deviceInfo);
 
             OutputStream os = conn.getOutputStream();
             os.write(body.toString().getBytes("UTF-8"));

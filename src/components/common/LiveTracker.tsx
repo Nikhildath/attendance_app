@@ -1,3 +1,19 @@
+/**
+ * LiveTracker — Global background location tracker
+ *
+ * Lifecycle:
+ *  1. Mounts once per session (rendered in __root.tsx).
+ *  2. Polls/listens to the `attendance` table to know whether the user is
+ *     currently checked in (isTracking = true) or checked out (false).
+ *  3. When isTracking = true:
+ *     – Native (Android): starts BackgroundTrackerService (custom Java, posts
+ *       to /api/location every 15 s even when app is killed) AND uses
+ *       BackgroundGeolocation.addWatcher foreground callback to emit via
+ *       socket while the app is in the foreground.
+ *     – Web: polls navigator.geolocation every 10 s and emits via socket.
+ *  4. When isTracking = false: stops everything.
+ */
+
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
@@ -6,7 +22,11 @@ import { socketService } from "@/lib/socket-service";
 import { SOCKET_URL, API_KEY } from "@/lib/config";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { getDeviceInfo } from "@/lib/device-info";
-import { startBackgroundTracker, stopBackgroundTracker, requestBatteryOptimizationExemption } from "@/lib/background-tracker";
+import {
+  startBackgroundTracker,
+  stopBackgroundTracker,
+  requestBatteryOptimizationExemption,
+} from "@/lib/background-tracker";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,26 +38,31 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+/** Community background-geolocation plugin (foreground callback only on native) */
 const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
 
-const TRACKING_INTERVAL_MS = 10_000;
-const BATTERY_PROMPT_KEY = "battery_opt_prompted";
+const TRACKING_INTERVAL_MS = 10_000; // web polling interval
+const BATTERY_PROMPT_KEY   = "battery_opt_prompted";
 
-type BatteryManagerLike = {
-  level: number;
-};
+type BatteryManagerLike = { level: number };
 
 export function LiveTracker() {
-  const { profile } = useAuth();
-  const { current: branch } = useBranch();
-  const intervalRef = useRef<number | null>(null);
-  const watcherIdRef = useRef<string | null>(null);
-  const [isTracking, setIsTracking] = useState(false);
+  const { profile }          = useAuth();
+  const { current: branch }  = useBranch();
+  const [isTracking, setIsTracking]           = useState(false);
   const [showBatteryDialog, setShowBatteryDialog] = useState(false);
-  const deviceInfoRef = useRef<string>("");
 
+  // refs so effects can read the latest values without re-running
+  const intervalRef    = useRef<number | null>(null);
+  const watcherIdRef   = useRef<string | null>(null);
+  const deviceInfoRef  = useRef<string>("");
+  const isActiveRef    = useRef(false); // guards stale callbacks after cleanup
+
+  // ── 1. Determine whether the user is currently checked in ──────────────────
   useEffect(() => {
     if (!profile?.id) return;
+
+    let canceled = false;
 
     const checkStatus = async () => {
       const today = new Date();
@@ -45,68 +70,94 @@ export function LiveTracker() {
 
       const { data, error } = await supabase
         .from("attendance")
-        .select("*")
+        .select("id, check_out")
         .eq("user_id", profile.id)
         .gte("check_in", today.toISOString())
         .order("check_in", { ascending: false })
         .limit(1)
         .maybeSingle();
-      
+
       if (error) {
-        console.warn("[LiveTracker] Error checking attendance status:", error.message);
+        console.warn("[LiveTracker] Error checking attendance:", error.message);
       }
-      setIsTracking(!!(data && !data.check_out));
+
+      if (!canceled) {
+        setIsTracking(!!(data && !data.check_out));
+      }
     };
-    
+
     checkStatus();
 
+    // Grab device info once
     getDeviceInfo().then((info) => {
       deviceInfoRef.current = `${info.model} | ${info.os} ${info.osVersion}`;
     });
 
+    // Realtime listener — fires on INSERT (check-in) or UPDATE (check-out)
     const channel = supabase
-      .channel('attendance_tracking_status')
+      .channel(`attendance_tracker_${profile.id}`)
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'attendance', filter: `user_id=eq.${profile.id}` },
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "attendance",
+          filter: `user_id=eq.${profile.id}`,
+        },
         (payload) => {
-          const newRecord = payload.new as any;
-          if (newRecord && !newRecord.check_out) {
-            setIsTracking(true);
-          } else {
+          if (canceled) return;
+          const rec = payload.new as any;
+          // For DELETE payload.new is empty — treat as checked out
+          if (!rec || !rec.id) {
             setIsTracking(false);
+          } else {
+            setIsTracking(!rec.check_out);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          console.warn("[LiveTracker] Realtime channel error — polling fallback");
+          // Fallback: poll every 30 s if realtime fails
+          const fallback = window.setInterval(checkStatus, 30_000);
+          return () => window.clearInterval(fallback);
+        }
+      });
 
     return () => {
+      canceled = true;
       supabase.removeChannel(channel);
     };
   }, [profile?.id]);
 
+  // ── 2. Start / stop location tracking when isTracking changes ──────────────
   useEffect(() => {
     if (!profile?.id || !isTracking) return;
 
-    let isActive = true;
+    isActiveRef.current = true;
 
-    const getBatteryLevel = async () => {
-      const batteryApi = (navigator as Navigator & {
-        getBattery?: () => Promise<BatteryManagerLike>;
-      }).getBattery;
+    // ── helpers ────────────────────────────────────────────────────────────
 
-      if (!batteryApi) return null;
-
+    const getBatteryLevel = async (): Promise<number> => {
+      const nav = navigator as Navigator & { getBattery?: () => Promise<BatteryManagerLike> };
+      if (!nav.getBattery) return 0;
       try {
-        const battery = await batteryApi.call(navigator);
-        return Math.round(battery.level * 100);
-      } catch (error) {
-        console.warn("Battery API unavailable:", error);
-        return null;
+        const b = await nav.getBattery();
+        return Math.round(b.level * 100);
+      } catch {
+        return 0;
       }
     };
 
-    const sendLocationUpdate = (coords?: { latitude: number; longitude: number; speed?: number; accuracy?: number }) => {
+    /** Emit one location update via the socket connection. */
+    const sendLocationUpdate = (coords?: {
+      latitude: number;
+      longitude: number;
+      speed?: number;
+      accuracy?: number;
+    }) => {
+      if (!isActiveRef.current) return;
+
       let lat = coords?.latitude;
       let lng = coords?.longitude;
       const hasGps = typeof lat === "number" && typeof lng === "number";
@@ -121,100 +172,109 @@ export function LiveTracker() {
         }
       }
 
-      getBatteryLevel().then((batteryLevel) => {
+      getBatteryLevel().then((battery) => {
+        if (!isActiveRef.current) return;
         socketService.updateLocation({
           userId: profile.id,
           lat: lat ?? 0,
           lng: lng ?? 0,
-          battery: batteryLevel ?? 0,
-          speed: coords?.speed ?? 0,
+          battery,
+          speed:    coords?.speed    ?? 0,
           accuracy: coords?.accuracy ?? 0,
           task: `${profile.role} - ${hasGps ? "GPS Active" : "Using Branch Location"}`,
-          status: "active",
+          status:     "active",
           deviceInfo: deviceInfoRef.current,
         });
       });
     };
 
+    // ── web tracking (browser / fallback) ──────────────────────────────────
+
     const startWebTracking = () => {
-      const captureAndSyncLocation = () => {
+      const poll = () => {
+        if (!isActiveRef.current) return;
         if (!("geolocation" in navigator)) {
           sendLocationUpdate();
           return;
         }
-
         navigator.geolocation.getCurrentPosition(
           (pos) => {
-            if (!isActive) return;
+            if (!isActiveRef.current) return;
             sendLocationUpdate({
-              latitude: pos.coords.latitude,
+              latitude:  pos.coords.latitude,
               longitude: pos.coords.longitude,
-              speed: pos.coords.speed || 0,
-              accuracy: pos.coords.accuracy || 0,
+              speed:     pos.coords.speed    ?? 0,
+              accuracy:  pos.coords.accuracy ?? 0,
             });
           },
           (err) => {
-            console.warn("Location unavailable, using fallback location:", err.message);
+            console.warn("[LiveTracker] GPS unavailable, using fallback:", err.message);
             sendLocationUpdate();
           },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
         );
       };
 
-      captureAndSyncLocation();
-      intervalRef.current = window.setInterval(captureAndSyncLocation, TRACKING_INTERVAL_MS);
+      poll(); // immediate first update
+      intervalRef.current = window.setInterval(poll, TRACKING_INTERVAL_MS);
     };
+
+    // ── native tracking (Android) ──────────────────────────────────────────
 
     const startNativeTracking = async () => {
       try {
-        const serverUrl = SOCKET_URL?.replace(/\/+$/, '');
+        /**
+         * addWatcher provides a JS callback while the app is in the FOREGROUND.
+         * We deliberately do NOT pass a `url` here because the community plugin
+         * sends {latitude, longitude} but not `userId` in the body — the server
+         * would reject it. Background HTTP posting is handled exclusively by
+         * BackgroundTrackerService (our Java foreground service).
+         */
         const watcherId = await BackgroundGeolocation.addWatcher(
           {
-            backgroundMessage: "Attendance tracking active — updates sent every 30s until checkout.",
-            backgroundTitle: "Attendly Tracking",
+            backgroundMessage: "Attendly tracking active. Location sent every 30 s until checkout.",
+            backgroundTitle:   "Attendly Tracking",
             requestPermissions: true,
             stale: false,
             distanceFilter: 0,
-            foregroundService: true,
-            url: `${serverUrl}/api/location`,
-            headers: {
-              'x-api-key': API_KEY,
-              'x-user-id': profile.id,
-              'Content-Type': 'application/json',
-            },
-            method: 'POST',
           },
           (location: any, error: any) => {
-            if (!isActive) return;
+            if (!isActiveRef.current) return;
             if (error) {
-              console.error("Background geolocation error:", error);
+              console.error("[LiveTracker] BackgroundGeolocation error:", error.code, error.message);
               return;
             }
             if (location) {
               sendLocationUpdate({
-                latitude: location.latitude,
+                latitude:  location.latitude,
                 longitude: location.longitude,
-                speed: location.speed || 0,
-                accuracy: location.accuracy || 0,
+                speed:     location.speed    ?? 0,
+                accuracy:  location.accuracy ?? 0,
               });
             }
           }
         );
         watcherIdRef.current = watcherId;
+        console.log("[LiveTracker] BackgroundGeolocation watcher started:", watcherId);
       } catch (err) {
-        console.error("Failed to start native background tracking:", err);
+        console.error("[LiveTracker] Failed to start BackgroundGeolocation, using web fallback:", err);
         startWebTracking();
       }
     };
 
+    // ── kick off ───────────────────────────────────────────────────────────
+
     if (Capacitor.isNativePlatform()) {
       startNativeTracking();
+
+      // Our custom Java foreground service handles background / killed-app HTTP posts
       startBackgroundTracker({
-        userId: profile.id,
-        apiKey: API_KEY,
+        userId:    profile.id,
+        apiKey:    API_KEY,
         serverUrl: SOCKET_URL,
       });
-      // Show battery optimization prompt once per device
+
+      // Prompt to disable battery optimisation once
       if (!localStorage.getItem(BATTERY_PROMPT_KEY)) {
         setShowBatteryDialog(true);
       }
@@ -222,33 +282,44 @@ export function LiveTracker() {
       startWebTracking();
     }
 
+    // ── cleanup when isTracking → false or component unmounts ──────────────
     return () => {
-      isActive = false;
+      isActiveRef.current = false;
+
       if (intervalRef.current !== null) {
         window.clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+
       if (Capacitor.isNativePlatform()) {
         if (watcherIdRef.current) {
-          BackgroundGeolocation.removeWatcher({ id: watcherIdRef.current }).catch(console.error);
+          BackgroundGeolocation.removeWatcher({ id: watcherIdRef.current }).catch(
+            (e: any) => console.warn("[LiveTracker] removeWatcher error:", e)
+          );
           watcherIdRef.current = null;
         }
         stopBackgroundTracker();
       }
+
+      console.log("[LiveTracker] Tracking stopped.");
     };
   }, [profile?.id, profile?.role, branch?.id, branch?.lat, branch?.lng, isTracking]);
 
+  // ── UI: battery optimisation prompt ────────────────────────────────────────
   return (
     <AlertDialog open={showBatteryDialog} onOpenChange={setShowBatteryDialog}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Battery Optimization</AlertDialogTitle>
+          <AlertDialogTitle>Enable Reliable Background Tracking</AlertDialogTitle>
           <AlertDialogDescription>
-            To keep location tracking reliable when the app is closed, please disable battery optimization for Attendly on the next screen.
+            To keep your location updating while Attendly is minimised or the screen
+            is off, please disable battery optimisation for the app on the next screen.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => localStorage.setItem(BATTERY_PROMPT_KEY, "dismissed")}>
+          <AlertDialogCancel
+            onClick={() => localStorage.setItem(BATTERY_PROMPT_KEY, "dismissed")}
+          >
             Skip
           </AlertDialogCancel>
           <AlertDialogAction

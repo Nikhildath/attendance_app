@@ -37,6 +37,7 @@ public class BackgroundTrackerPlugin extends Plugin {
         }
 
         try {
+            BackgroundTrackerService.explicitlyStopped = false; // allow auto-restart
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 getContext().startForegroundService(intent);
             } else {
@@ -51,6 +52,7 @@ public class BackgroundTrackerPlugin extends Plugin {
     @PluginMethod
     public void stop(PluginCall call) {
         try {
+            BackgroundTrackerService.explicitlyStopped = true; // prevent auto-restart
             Intent intent = new Intent(getContext(), BackgroundTrackerService.class);
             getContext().stopService(intent);
             call.resolve();

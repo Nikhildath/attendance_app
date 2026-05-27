@@ -70,7 +70,7 @@ try {
 // Rate limiter for background location endpoint
 const locationLimiter = rateLimit({
   windowMs: 30 * 1000,
-  max: 5,
+  max: 20, // raised — native plugin + Java service may both post simultaneously
   keyGenerator: (req) => req.headers['x-user-id'] || req.body?.userId || req.ip,
   message: { error: 'Too many location updates. Please slow down.' },
   validate: { xForwardedForHeader: false },
@@ -320,8 +320,14 @@ app.post('/api/location', locationLimiter, async (req, res) => {
     const accuracy = req.body.accuracy ?? 0;
     const task = req.body.task || req.body.current_task || 'Tracking in background';
     const status = req.body.status || 'active';
+    const deviceInfo = req.body.deviceInfo || '';
 
-    console.log(`[HTTP Location] User: ${userId}, Lat: ${lat}, Lng: ${lng}`);
+    // Parse device info for DB columns
+    const deviceModel = deviceInfo ? deviceInfo.split(' | ')[0] || null : null;
+    const deviceOs = deviceInfo ? deviceInfo.split(' | ')[1]?.split(' ')[0] || null : null;
+    const deviceOsVersion = deviceInfo ? deviceInfo.split(' | ')[1]?.split(' ').slice(1).join(' ') || null : null;
+
+    console.log(`[HTTP Location] User: ${userId}, Lat: ${lat}, Lng: ${lng}, Device: ${deviceInfo || 'N/A'}`);
 
     // Upsert using RPC
     try {
@@ -334,13 +340,16 @@ app.post('/api/location', locationLimiter, async (req, res) => {
         p_accuracy: accuracy || 0,
         p_current_task: task || 'Tracking in background',
         p_status: status || 'active',
+        p_device_model: deviceModel,
+        p_device_os: deviceOs,
+        p_device_os_version: deviceOsVersion,
       });
 
       if (rpcError) {
         console.error(`[HTTP Location] RPC error:`, rpcError.message);
         // Fallback to direct upsert
         const { error: upsertError } = await supabase.from('staff_tracking').upsert(
-          { user_id: userId, lat, lng, battery: battery || 0, speed_kmh: speed || 0, accuracy: accuracy || 0, current_task: task || 'Tracking in background', status: status || 'active', last_update: new Date().toISOString() },
+          { user_id: userId, lat, lng, battery: battery || 0, speed_kmh: speed || 0, accuracy: accuracy || 0, current_task: task || 'Tracking in background', status: status || 'active', last_update: new Date().toISOString(), device_model: deviceModel, device_os: deviceOs, device_os_version: deviceOsVersion },
           { onConflict: 'user_id' }
         );
         if (upsertError) {
@@ -362,6 +371,7 @@ app.post('/api/location', locationLimiter, async (req, res) => {
       task: task || 'Tracking in background',
       status: status || 'active',
       lastUpdate: new Date().toISOString(),
+      deviceInfo: deviceInfo || '',
     };
     io.emit('staff_location_update', update);
 
@@ -488,7 +498,7 @@ io.on('connection', (socket) => {
   // Receive location update from field staff
   socket.on('location_update', async (data) => {
     try {
-      const { userId, lat, lng, battery, speed, accuracy, task, status } = data;
+      const { userId, lat, lng, battery, speed, accuracy, task, status, deviceInfo } = data;
       
       console.log(`[Location Update] User: ${socket.userId}, Payload UserId: ${userId}, Data:`, { lat, lng, battery, status });
 
@@ -514,6 +524,7 @@ io.on('connection', (socket) => {
         task: task || existing.task || 'No active task',
         status: status || existing.status || 'active',
         lastUpdate: new Date().toISOString(),
+        deviceInfo: deviceInfo || existing.deviceInfo || '',
       };
       locationCache.set(userId, updated);
 
@@ -539,6 +550,11 @@ io.on('connection', (socket) => {
       
       console.log(`[Location Update] Broadcasting to all clients:`, updated);
 
+      // Parse device info for DB columns
+      const devModel = deviceInfo ? deviceInfo.split(' | ')[0] || null : null;
+      const devOs = deviceInfo ? deviceInfo.split(' | ')[1]?.split(' ')[0] || null : null;
+      const devOsVer = deviceInfo ? deviceInfo.split(' | ')[1]?.split(' ').slice(1).join(' ') || null : null;
+
       // Update Supabase (use RPC to bypass RLS)
       try {
         const { error: rpcError } = await supabase.rpc('upsert_staff_tracking', {
@@ -550,6 +566,9 @@ io.on('connection', (socket) => {
           p_accuracy: accuracy || 0,
           p_current_task: task || '',
           p_status: status || 'active',
+          p_device_model: devModel,
+          p_device_os: devOs,
+          p_device_os_version: devOsVer,
         });
         
         if (rpcError) {

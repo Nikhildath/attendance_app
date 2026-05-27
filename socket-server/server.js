@@ -127,7 +127,7 @@ const supabase = createClient(
 // Rate limiter for background location endpoint
 const locationLimiter = rateLimit({
   windowMs: 30 * 1000,
-  max: 5,
+  max: 20, // raised — native plugin + Java service may both post simultaneously
   keyGenerator: (req) => req.headers['x-user-id'] || req.body?.userId || req.ip,
   message: { error: 'Too many location updates. Please slow down.' },
   validate: { xForwardedForHeader: false },
@@ -259,7 +259,22 @@ app.post('/api/location', locationLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Invalid API key' });
     }
 
-    const { userId, lat, lng, battery, speed, accuracy, task, status, deviceInfo } = req.body;
+    const body = req.body || {};
+
+    // Accept userId from body OR from x-user-id header (sent by @capacitor-community/background-geolocation)
+    const userId = body.userId || req.headers['x-user-id'];
+
+    // Accept lat/lng OR latitude/longitude (community plugin sends the latter)
+    const lat = body.lat != null ? body.lat : body.latitude;
+    const lng = body.lng != null ? body.lng : body.longitude;
+
+    const battery = body.battery;
+    const speed   = body.speed;
+    const accuracy = body.accuracy;
+    const task    = body.task;
+    const status  = body.status;
+    const deviceInfo = body.deviceInfo;
+
     if (!userId || lat == null || lng == null) {
       return res.status(400).json({ error: 'userId, lat, and lng are required' });
     }
