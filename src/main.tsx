@@ -1,3 +1,11 @@
+import { Buffer } from "buffer";
+(window as any).Buffer = Buffer;
+(window as any).process = { env: {}, browser: true };
+if (typeof globalThis !== 'undefined') {
+  (globalThis as any).Buffer = Buffer;
+  (globalThis as any).process = (window as any).process;
+}
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";

@@ -13,7 +13,7 @@ const palettes = [
   ["#6366f1", "#818cf8"],
 ];
 
-export function Avatar2D({ name, size = 40, src }: { name: string; size?: number; src?: string | null }) {
+export function Avatar2D({ name, size = 40, src, className = "" }: { name: string; size?: number; src?: string | null; className?: string }) {
   if (src) {
     return (
       <img 
@@ -21,7 +21,7 @@ export function Avatar2D({ name, size = 40, src }: { name: string; size?: number
         alt={name} 
         width={size} 
         height={size} 
-        className="shrink-0 rounded-full object-cover border border-border"
+        className={`${className} shrink-0 rounded-full object-cover border border-border`}
         onError={(e) => {
           (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
         }}
@@ -32,7 +32,7 @@ export function Avatar2D({ name, size = 40, src }: { name: string; size?: number
   const [a, b] = palettes[hash(name) % palettes.length];
   const id = `g-${hash(name)}`;
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" className="shrink-0 rounded-full">
+    <svg width={size} height={size} viewBox="0 0 40 40" className={`${className} shrink-0 rounded-full`}>
       <defs>
         <linearGradient id={id} x1="0" x2="1" y1="0" y2="1">
           <stop offset="0%" stopColor={a} />

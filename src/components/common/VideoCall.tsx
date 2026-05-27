@@ -87,6 +87,10 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
         console.log("🎥 [VideoCall] Requesting native permissions...");
         const permResult = await MediaPermissions.request();
         console.log("🎥 [VideoCall] Permission result:", permResult);
+        
+        // Small delay to let OS permissions settle
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         if (!permResult.allGranted) {
           setMediaError("Camera or microphone permission denied. Please allow them in your device Settings and try again.");
           socketService.joinVideoRoom(roomId, userName);

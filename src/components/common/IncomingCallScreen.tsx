@@ -17,29 +17,43 @@ export function IncomingCallScreen({ callerName, callerId, roomId, onAccept, onR
 
   useEffect(() => {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 440;
-    gain.gain.value = 0.3;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
 
     let ringInterval: ReturnType<typeof setInterval>;
     const playRing = () => {
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.5);
-      setTimeout(() => {
-        const osc2 = ctx.createOscillator();
-        osc2.type = "sine";
-        osc2.frequency.value = 540;
-        const gain2 = ctx.createGain();
-        gain2.gain.value = 0.3;
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.start(ctx.currentTime);
-        osc2.stop(ctx.currentTime + 0.4);
-      }, 600);
+      try {
+        if (ctx.state === "suspended") {
+          ctx.resume();
+        }
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 440;
+        gain.gain.value = 0.3;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+
+        setTimeout(() => {
+          try {
+            if (ctx.state === "closed") return;
+            const osc2 = ctx.createOscillator();
+            osc2.type = "sine";
+            osc2.frequency.value = 540;
+            const gain2 = ctx.createGain();
+            gain2.gain.value = 0.3;
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start(ctx.currentTime);
+            osc2.stop(ctx.currentTime + 0.4);
+          } catch (e) {
+            console.warn("[IncomingCall] Error playing second tone:", e);
+          }
+        }, 600);
+      } catch (e) {
+        console.warn("[IncomingCall] Error playing ring tone:", e);
+      }
     };
     playRing();
     ringInterval = setInterval(playRing, 1500);
@@ -57,7 +71,7 @@ export function IncomingCallScreen({ callerName, callerId, roomId, onAccept, onR
     return () => {
       clearInterval(ringInterval);
       clearInterval(timeout);
-      ctx.close();
+      ctx.close().catch(() => {});
     };
   }, []);
 

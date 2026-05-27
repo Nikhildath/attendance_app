@@ -3,6 +3,8 @@ import { registerPlugin } from "@capacitor/core";
 export interface PermissionStatus {
   camera: boolean;
   microphone: boolean;
+  audio?: boolean;
+  bluetooth?: boolean;
   allGranted: boolean;
 }
 

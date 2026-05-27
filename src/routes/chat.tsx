@@ -15,6 +15,9 @@ import { useNotificationService } from "@/lib/notification-service";
 import { socketService } from "@/lib/socket-service";
 import { CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY, CHAT_STORAGE_BUCKET } from "@/lib/config";
 import { SOCKET_URL } from "@/lib/config";
+import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { MediaPermissions } from "@/lib/media-permissions";
 
 const STORAGE_BUCKET = CHAT_STORAGE_BUCKET || 'chat-media';
 const chatSupabase = createClient(CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY);
@@ -408,6 +411,14 @@ function ChatPage() {
 
   const startRecording = async () => {
     try {
+      if (Capacitor.isNativePlatform()) {
+        const perm = await MediaPermissions.request();
+        if (!perm.allGranted && !perm.microphone) {
+          toast.error("Microphone permission is required to record voice notes.");
+          return;
+        }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
