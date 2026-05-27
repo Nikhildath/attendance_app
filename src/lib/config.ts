@@ -18,12 +18,9 @@ export const CHAT_STORAGE_BUCKET = "chat-media";
 // --- Google Calendar ---
 export const GOOGLE_CALENDAR_API_KEY = "AIzaSyDQRgaN0xdNTMwEJdLNoKHBYTOTuqhHzFE";
 
-// --- Socket Server ---
-// For local dev: set VITE_SOCKET_URL=http://localhost:3001 in .env.local
-// For production: defaults to the Render URL below
 export const SOCKET_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SOCKET_URL) ||
-  "https://attendance-socket-server.onrender.com";
+  (typeof import.meta !== 'undefined' && import.meta.env?.DEV ? 'http://localhost:3001' : 'https://attendance-socket-server.onrender.com');
 
 // --- Background Tracking API Key ---
 // Must match the API_KEY in server-config.js

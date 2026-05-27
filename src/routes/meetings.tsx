@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { format, isToday, isTomorrow, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from "date-fns";
 import { Video, Phone, Calendar, Clock, Users, Plus, X, ChevronLeft, ChevronRight, Trash2, Play, CheckCircle, Ban } from "lucide-react";
@@ -334,8 +335,8 @@ function MeetingsPage() {
         </div>
       )}
 
-      {/* Schedule Meeting Modal */}
-      {showSchedule && (
+      {/* Schedule Meeting Modal (portal to body to avoid navbar stacking context) */}
+      {showSchedule && createPortal(
         <div className="fixed inset-0 z-[100] flex items-end lg:items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setShowSchedule(false)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full lg:max-w-lg rounded-t-3xl lg:rounded-3xl border bg-card p-6 shadow-2xl max-h-[90dvh] overflow-y-auto animate-in slide-in-from-bottom-8 lg:slide-in-from-bottom-0 lg:zoom-in-95 duration-300">
             <div className="flex items-center justify-between mb-6">
@@ -393,7 +394,8 @@ function MeetingsPage() {
               </button>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

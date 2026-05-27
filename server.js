@@ -95,7 +95,9 @@ app.get('/', (req, res) => {
   const videoRooms = [];
   if (allRooms) {
     allRooms.forEach((sockets, room) => {
-      if (room.startsWith('direct-')) videoRooms.push(room);
+      const isSocketId = room.length < 25 && /^[A-Za-z0-9_-]+$/.test(room);
+      const isUserRoom = connectedUserIds.includes(room);
+      if (!isSocketId && !isUserRoom) videoRooms.push(room);
     });
   }
 
@@ -192,6 +194,20 @@ app.get('/', (req, res) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), message: 'Socket.io server is running' });
+});
+
+// Debug: dump all rooms for troubleshooting
+app.get('/debug/rooms', (req, res) => {
+  const allRooms = io.sockets?.adapter?.rooms;
+  const rooms = [];
+  if (allRooms) {
+    allRooms.forEach((sockets, room) => {
+      if (!room.startsWith('/') && room.length > 5) {
+        rooms.push({ room, sockets: sockets.size });
+      }
+    });
+  }
+  res.json({ roomCount: rooms.length, rooms, connectedUsers: [...connectedUsers.keys()] });
 });
 
 app.post('/api/push/register-fcm', async (req, res) => {

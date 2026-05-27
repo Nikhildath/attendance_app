@@ -41,6 +41,7 @@ function getProfilePic(profiles: VideoCallProps["profiles"], id: string, name: s
 
 export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEnd, onReady, profiles }: VideoCallProps) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
   const [peers, setPeers] = useState<PeerEntry[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -59,6 +60,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   const peersRef = useRef<Map<string, Peer.Instance>>(new Map());
   const peerNamesRef = useRef<Map<string, string>>(new Map());
   const pendingSignalsRef = useRef<Map<string, any[]>>(new Map());
+  const pendingUserJoinedRef = useRef<Array<{ userId: string; name: string }>>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
@@ -77,11 +79,6 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
     setControlsVisible(true);
     startHideTimer();
   }, [startHideTimer]);
-
-  const retryMedia = useCallback(() => {
-    setMediaError(null);
-    startCall();
-  }, [startCall]);
 
   const startCall = useCallback(async () => {
     console.log("🎥 [VideoCall] Starting call. isNative:", isNative);
@@ -121,6 +118,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log("🎥 [VideoCall] getUserMedia success, tracks:", stream.getTracks().map(t => t.kind));
+      localStreamRef.current = stream;
       setLocalStream(stream);
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
       socketService.joinVideoRoom(roomId, userName);
@@ -131,6 +129,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       try {
         const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log("🎥 [VideoCall] audio-only getUserMedia success");
+        localStreamRef.current = audioStream;
         setLocalStream(audioStream);
         if (localVideoRef.current) localVideoRef.current.srcObject = audioStream;
         setIsVideoOff(true);
@@ -146,6 +145,11 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       }
     }
   }, [roomId, userName, onReady, isNative]);
+
+  const retryMedia = useCallback(() => {
+    setMediaError(null);
+    startCall();
+  }, [startCall]);
 
   // Sync stream to video element whenever it changes
   useEffect(() => {
@@ -166,11 +170,12 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   }, [roomId]);
 
   const stopAll = useCallback(() => {
-    localStream?.getTracks().forEach((t) => t.stop());
+    localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    localStreamRef.current = null;
     peersRef.current.forEach((p) => p.destroy());
     peersRef.current.clear();
     socketService.leaveVideoRoom(roomId);
-  }, [localStream, roomId]);
+  }, [roomId]);
 
   const createPeer = useCallback(
     (targetId: string, initiator: boolean, stream: MediaStream) => {
@@ -223,17 +228,20 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       if (data.userId !== userId) {
         peerNamesRef.current.set(data.userId, data.name);
       }
-      // Create peer as initiator when another user joins AND we have a stream
-      if (data.userId !== userId && localStream) {
-        createPeer(data.userId, true, localStream);
+      const stream = localStreamRef.current;
+      if (data.userId !== userId && stream) {
+        createPeer(data.userId, true, stream);
+      } else if (data.userId !== userId && !stream) {
+        pendingUserJoinedRef.current.push({ userId: data.userId, name: data.name });
       }
     });
 
     const unsubSignal = socketService.onVideoSignal((data) => {
       if (data.from === userId) return;
+      const stream = localStreamRef.current;
       let peer = peersRef.current.get(data.from);
-      if (!peer && localStream) {
-        peer = createPeer(data.from, false, localStream);
+      if (!peer && stream) {
+        peer = createPeer(data.from, false, stream);
         peer.signal(data.signal);
       } else if (peer) {
         peer.signal(data.signal);
@@ -266,17 +274,28 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       unsubLeft();
       unsubVideoToggle();
     };
-  }, [localStream, userId, createPeer]);
+  }, [userId, createPeer]);
 
-  // When localStream becomes available, process any signals that were queued
-  // before the stream was ready
+  // When localStream becomes available, process any signals and user-joined events
+  // that were queued before the stream was ready
   useEffect(() => {
     if (!localStream) return;
+    const stream = localStream;
+
+    // Process queued user-joined events
+    const joined = pendingUserJoinedRef.current.splice(0);
+    for (const { userId: uid } of joined) {
+      if (uid !== userId && !peersRef.current.has(uid)) {
+        createPeer(uid, true, stream);
+      }
+    }
+
+    // Process queued signals
     pendingSignalsRef.current.forEach((pending, fromId) => {
       if (peersRef.current.has(fromId)) {
         pending.forEach(sig => peersRef.current.get(fromId)!.signal(sig));
       } else {
-        const peer = createPeer(fromId, false, localStream);
+        const peer = createPeer(fromId, false, stream);
         pending.forEach(sig => peer.signal(sig));
       }
     });
@@ -284,13 +303,13 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   }, [localStream, createPeer]);
 
   const toggleMute = () => {
-    localStream?.getAudioTracks().forEach((t) => (t.enabled = isMuted));
+    localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = isMuted));
     setIsMuted(!isMuted);
     showControls();
   };
 
   const toggleVideo = () => {
-    localStream?.getVideoTracks().forEach((t) => (t.enabled = isVideoOff));
+    localStreamRef.current?.getVideoTracks().forEach((t) => (t.enabled = isVideoOff));
     setIsVideoOff(!isVideoOff);
     socketService.setVideoToggle(roomId, !isVideoOff);
     showControls();

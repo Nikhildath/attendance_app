@@ -91,6 +91,10 @@ class SocketService {
         
         console.log('🔌 Connecting to Socket server at:', socketUrl);
         console.log('🔑 Auth - Token:', !!token, 'UserId:', !!userId);
+        console.log('📋 Config SOCKET_URL resolved:', CONFIG_SOCKET_URL || '(empty, using fallback)');
+        if (!socketUrl || socketUrl === 'http://localhost:3001' && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+          console.warn('⚠️ Socket URL may be incorrect for production. Set VITE_SOCKET_URL env var at build time.');
+        }
         
         const auth: any = {};
         if (token) auth.token = token;
@@ -98,7 +102,11 @@ class SocketService {
 
         const timer = setTimeout(() => {
           this.isConnecting = false;
-          reject(new Error('Socket connection timed out'));
+          if (this.socket && !this.socket.connected) {
+            this.socket.close();
+            this.socket = null;
+          }
+          reject(new Error(`Socket connection timed out after ${timeoutMs}ms to ${socketUrl}`));
         }, timeoutMs);
         
         this.socket = io(socketUrl, {
@@ -281,6 +289,7 @@ class SocketService {
 
   // Video call methods
   joinVideoRoom(roomId: string, name: string): void {
+    console.log(`🎥 [SocketService] joinVideoRoom called: roomId="${roomId}", name="${name}", connected=${this.socket?.connected}`);
     this.safeEmit('video:join-room', { roomId, name });
   }
 
