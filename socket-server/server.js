@@ -132,9 +132,81 @@ const locationLimiter = rateLimit({
 app.use(cors());
 app.use(express.json());
 
+// Root endpoint — show server info when visited in browser
+app.get('/', (req, res) => {
+  const uptime = Math.floor(process.uptime());
+  const hours = Math.floor(uptime / 3600);
+  const mins = Math.floor((uptime % 3600) / 60);
+  const secs = uptime % 60;
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Attendly Socket Server</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; background: #0f172a; color: #e2e8f0; }
+        h1 { color: #22c55e; font-size: 1.8rem; }
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; margin: 16px 0; }
+        .tag { display: inline-block; background: #22c55e20; color: #22c55e; padding: 2px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-right: 6px; }
+        .tag.blue { background: #3b82f620; color: #60a5fa; }
+        .tag.purple { background: #a855f720; color: #c084fc; }
+        dt { font-weight: 600; color: #94a3b8; margin-top: 12px; font-size: 0.85rem; }
+        dd { margin-left: 0; margin-top: 2px; }
+        a { color: #60a5fa; }
+        .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+        .status.online { background: #22c55e; box-shadow: 0 0 8px #22c55e80; }
+      </style>
+    </head>
+    <body>
+      <h1>Attendly Socket Server</h1>
+      <p style="color: #94a3b8; margin-top: -8px;">Real-time engine for the Attendly attendance app</p>
+
+      <div class="card">
+        <h2 style="margin:0 0 12px 0; font-size:1.1rem;">Status</h2>
+        <span class="status online"></span> Running
+        <div style="margin-top:8px; color:#94a3b8; font-size:0.9rem;">
+          Uptime: ${hours}h ${mins}m ${secs}s
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin:0 0 12px 0; font-size:1.1rem;">What it does</h2>
+        <dl>
+          <dt>Live Location Tracking</dt>
+          <dd style="color:#94a3b8; font-size:0.9rem;">Receives and broadcasts field staff GPS positions in real time.</dd>
+
+          <dt>Direct Video Calls</dt>
+          <dd style="color:#94a3b8; font-size:0.9rem;">Relays WebRTC signaling (offers, answers, ICE candidates) between peers for one-to-one video calls.</dd>
+
+          <dt>Push Notifications</dt>
+          <dd style="color:#94a3b8; font-size:0.9rem;">Sends high-priority FCM (Android) and Web Push notifications for incoming calls.<br>
+            <span class="tag">FCM ${fcmAvailable ? 'Connected' : 'Not configured'}</span>
+            <span class="tag blue">Web Push</span>
+          </dd>
+
+          <dt>Chat</dt>
+          <dd style="color:#94a3b8; font-size:0.9rem;">Routes real-time chat messages between users.</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h2 style="margin:0 0 12px 0; font-size:1.1rem;">Endpoints</h2>
+        <span class="tag purple">GET</span> <a href="/health">/health</a> — Health check<br>
+        <span class="tag purple" style="margin-top:6px; display:inline-block;">POST</span> /api/location — Background location (requires API key)
+      </div>
+
+      <div style="text-align:center; color:#475569; font-size:0.8rem; margin-top:24px;">
+        Powered by Socket.IO &middot; Deployed on Render
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Socket.io server is running' });
+  res.json({ status: 'ok', uptime: process.uptime(), message: 'Socket.io server is running' });
 });
 
 // Background location update endpoint (used by native geolocation plugin when app is in background/killed)
