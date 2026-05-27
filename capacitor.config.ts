@@ -4,8 +4,8 @@ const config: CapacitorConfig = {
   appId: 'com.attendly.app',
   appName: 'Attendly',
   webDir: 'dist',
-  android: {
-    useLegacyBridge: true,
+  server: {
+    androidScheme: 'https'
   },
   plugins: {
     PushNotifications: {

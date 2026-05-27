@@ -68,33 +68,53 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   }, [startHideTimer]);
 
   const startCall = useCallback(async () => {
+    console.log("🎥 [VideoCall] Starting call. isNative:", isNative);
     if (isNative) {
       try {
+        console.log("🎥 [VideoCall] Requesting native permissions...");
         const permResult = await MediaPermissions.request();
+        console.log("🎥 [VideoCall] Permission result:", permResult);
         if (!permResult.allGranted) {
           setMediaError("Camera or microphone permission denied. Please allow them in your device Settings and try again.");
           socketService.joinVideoRoom(roomId, userName);
           onReady?.();
           return;
         }
-      } catch {
-        // plugin not available, fall through
+      } catch (err: any) {
+        console.warn("🎥 [VideoCall] MediaPermissions plugin failed or not available:", err.message);
       }
     }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("🎥 [VideoCall] navigator.mediaDevices.getUserMedia is not supported");
+      setMediaError("Your browser or device does not support video calls in this context.");
+      onReady?.();
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 480 } },
+      console.log("🎥 [VideoCall] Requesting getUserMedia...");
+      const constraints = {
+        video: { 
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
         audio: true,
-      });
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log("🎥 [VideoCall] getUserMedia success, tracks:", stream.getTracks().map(t => t.kind));
       setLocalStream(stream);
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
       socketService.joinVideoRoom(roomId, userName);
       setMediaError(null);
       onReady?.();
     } catch (err: any) {
-      console.warn("Camera unavailable, trying audio-only:", err.message);
+      console.warn("🎥 [VideoCall] Camera unavailable or denied, trying audio-only:", err.message);
       try {
         const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log("🎥 [VideoCall] audio-only getUserMedia success");
         setLocalStream(audioStream);
         if (localVideoRef.current) localVideoRef.current.srcObject = audioStream;
         setIsVideoOff(true);
@@ -102,12 +122,14 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
         setMediaError(null);
         onReady?.();
       } catch (audioErr: any) {
-        console.error("Microphone also denied:", audioErr.message);
-        setMediaError("Camera and microphone access denied. Please allow permissions in your browser settings and try again.");
+        console.error("🎥 [VideoCall] Both camera and microphone denied/unavailable:", audioErr.message);
+        // CRITICAL FIX: Join the room anyway so the user can see/hear others even if they can't speak/be seen
+        setMediaError(`Your microphone and camera are off. You can still see and hear others.`);
+        socketService.joinVideoRoom(roomId, userName);
         onReady?.();
       }
     }
-  }, [roomId, userName, onReady]);
+  }, [roomId, userName, onReady, isNative]);
 
   useEffect(() => {
     startCall();
