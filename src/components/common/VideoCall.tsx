@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { socketService } from "@/lib/socket-service";
-import { X, Mic, MicOff, Video, VideoOff, Monitor, Phone, PhoneOff, MessageSquare, Maximize2, Minimize2, Users, ChevronRight } from "lucide-react";
+import { X, Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Peer from "simple-peer";
 import { Avatar2D } from "./Avatar2D";
 import { Capacitor } from "@capacitor/core";
-import { ScreenShare } from "@/lib/screen-share";
 import { MediaPermissions } from "@/lib/media-permissions";
 
 interface VideoCallProps {
@@ -31,6 +30,9 @@ const ICE_SERVERS = [
   { urls: "stun:stun2.l.google.com:19302" },
   { urls: "stun:stun3.l.google.com:19302" },
   { urls: "stun:stun4.l.google.com:19302" },
+  { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
 ];
 
 function getProfilePic(profiles: VideoCallProps["profiles"], id: string, name: string): string | null {
@@ -76,11 +78,22 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
     startHideTimer();
   }, [startHideTimer]);
 
+  const ensureSocketConnected = useCallback(async () => {
+    if (socketService.isConnected()) return;
+    // Wait for socket to connect (with timeout)
+    for (let i = 0; i < 50; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      if (socketService.isConnected()) return;
+    }
+    console.warn("🎥 [VideoCall] Socket failed to connect");
+  }, []);
+
   const startCall = useCallback(async () => {
     console.log("🎥 [VideoCall] Starting call. isNative:", isNative);
+    await ensureSocketConnected();
+
     if (isNative) {
       try {
-        console.log("🎥 [VideoCall] Requesting native permissions...");
         const permResult = await MediaPermissions.request();
         if (!permResult.allGranted) {
           setMediaError("Camera or microphone permission denied.");
@@ -118,7 +131,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
         onReady?.();
       }
     }
-  }, [roomId, userName, onReady, isNative]);
+  }, [roomId, userName, onReady, isNative, ensureSocketConnected]);
 
   useEffect(() => {
     startCall();
@@ -173,7 +186,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       // Process any pending signals for this peer
       const pending = pendingSignalsRef.current.get(targetId);
       if (pending) {
-        pending.forEach(sig => peer.signal(signal));
+        pending.forEach(sig => peer.signal(sig));
         pendingSignalsRef.current.delete(targetId);
       }
 
@@ -187,9 +200,10 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
     const unsubJoined = socketService.onVideoUserJoined((data) => {
       if (data.userId !== userId) {
         peerNamesRef.current.set(data.userId, data.name);
-        if (localStream) {
-          createPeer(data.userId, true, localStream);
-        }
+      }
+      // Create peer as initiator when another user joins AND we have a stream
+      if (data.userId !== userId && localStream) {
+        createPeer(data.userId, true, localStream);
       }
     });
 
@@ -231,6 +245,21 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       unsubVideoToggle();
     };
   }, [localStream, userId, createPeer]);
+
+  // When localStream becomes available, process any signals that were queued
+  // before the stream was ready
+  useEffect(() => {
+    if (!localStream) return;
+    pendingSignalsRef.current.forEach((pending, fromId) => {
+      if (peersRef.current.has(fromId)) {
+        pending.forEach(sig => peersRef.current.get(fromId)!.signal(sig));
+      } else {
+        const peer = createPeer(fromId, false, localStream);
+        pending.forEach(sig => peer.signal(sig));
+      }
+    });
+    pendingSignalsRef.current.clear();
+  }, [localStream, createPeer]);
 
   const toggleMute = () => {
     localStream?.getAudioTracks().forEach((t) => (t.enabled = isMuted));
