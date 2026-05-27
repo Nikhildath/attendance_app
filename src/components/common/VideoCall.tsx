@@ -70,6 +70,41 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   const nativeScreenCleanupRef = useRef<(() => void) | null>(null);
   const isNative = Capacitor.isNativePlatform();
 
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const originalAudioTrackRef = useRef<MediaStreamTrack | null>(null);
+
+  const setupAudioGainNode = useCallback((stream: MediaStream) => {
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length > 0) {
+      try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = audioContext;
+
+        const source = audioContext.createMediaStreamSource(new MediaStream([audioTracks[0]]));
+        const gainNode = audioContext.createGain();
+        gainNodeRef.current = gainNode;
+
+        const destination = audioContext.createMediaStreamDestination();
+        source.connect(gainNode);
+        gainNode.connect(destination);
+
+        // Keep reference to the original hardware track to stop it on clean up
+        originalAudioTrackRef.current = audioTracks[0];
+
+        // Replace the raw mic track in the stream with our gain-controlled destination track
+        stream.removeTrack(audioTracks[0]);
+        stream.addTrack(destination.stream.getAudioTracks()[0]);
+
+        // Initialize gain value based on current isMuted state
+        gainNode.gain.setValueAtTime(isMuted ? 0 : 1, audioContext.currentTime);
+        console.log("🎥 [VideoCall] Web Audio API gain routing set up. Initial gain:", isMuted ? 0 : 1);
+      } catch (err) {
+        console.warn("🎥 [VideoCall] Web Audio API failed, falling back to standard tracks:", err);
+      }
+    }
+  }, [isMuted]);
+
   const startHideTimer = useCallback(() => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => setControlsVisible(false), 4000);
@@ -122,6 +157,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log("🎥 [VideoCall] getUserMedia success, tracks:", stream.getTracks().map(t => t.kind));
+      setupAudioGainNode(stream);
       localStreamRef.current = stream;
       setLocalStream(stream);
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
@@ -133,6 +169,7 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
       try {
         const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log("🎥 [VideoCall] audio-only getUserMedia success");
+        setupAudioGainNode(audioStream);
         localStreamRef.current = audioStream;
         setLocalStream(audioStream);
         if (localVideoRef.current) localVideoRef.current.srcObject = audioStream;
@@ -175,6 +212,19 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
 
   const stopAll = useCallback(() => {
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    if (originalAudioTrackRef.current) {
+      try {
+        originalAudioTrackRef.current.stop();
+      } catch (e) {}
+      originalAudioTrackRef.current = null;
+    }
+    if (audioContextRef.current) {
+      try {
+        audioContextRef.current.close();
+      } catch (e) {}
+      audioContextRef.current = null;
+    }
+    gainNodeRef.current = null;
     localStreamRef.current = null;
     peersRef.current.forEach((p) => p.destroy());
     peersRef.current.clear();
@@ -307,8 +357,20 @@ export function VideoCall({ roomId, userId, userName, isDirect, calleeName, onEn
   }, [localStream, createPeer]);
 
   const toggleMute = () => {
-    localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = isMuted));
-    setIsMuted(!isMuted);
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+
+    // Mute via Web Audio API GainNode if available (bypasses Chrome 133 enabled=false audio bug)
+    if (gainNodeRef.current && audioContextRef.current) {
+      gainNodeRef.current.gain.setValueAtTime(newMuted ? 0 : 1, audioContextRef.current.currentTime);
+      console.log("🎥 [VideoCall] Mute status updated via Web Audio API. Gain is now:", newMuted ? 0 : 1);
+    }
+
+    // Also toggle the track's enabled property as standard WebRTC fallback
+    localStreamRef.current?.getAudioTracks().forEach((t) => {
+      t.enabled = !newMuted;
+    });
+
     showControls();
   };
 

@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebChromeClient;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,45 +31,38 @@ public class MainActivity extends BridgeActivity {
     // Request runtime permissions upfront for camera and microphone
     requestMediaPermissionsIfNeeded();
 
-    // Override the WebChromeClient to auto-grant WebRTC permission requests
-    // IMPORTANT: We must get the existing WebChromeClient from the bridge
-    // and only override onPermissionRequest, so Capacitor's internal
-    // handling (file chooser, JS dialogs, etc.) is preserved.
+    // Override the WebChromeClient using BridgeWebChromeClient to auto-grant WebRTC permission requests
+    // while preserving all standard Capacitor bridge functionality (e.g. file picking, alerts).
     WebView webView = this.bridge.getWebView();
-    final WebChromeClient originalClient = new WebChromeClient();
-
-    webView.setWebChromeClient(new WebChromeClient() {
+    webView.setWebChromeClient(new BridgeWebChromeClient(this.bridge) {
       @Override
       public void onPermissionRequest(final PermissionRequest request) {
-        // Auto-grant camera/mic WebRTC permissions to the WebView
-        // This is called when JavaScript requests getUserMedia()
-        runOnUiThread(() -> {
-          String[] resources = request.getResources();
-          List<String> grantedResources = new ArrayList<>();
+        // Auto-grant camera/mic WebRTC permissions to the WebView synchronously on the UI thread
+        String[] resources = request.getResources();
+        List<String> grantedResources = new ArrayList<>();
 
-          for (String resource : resources) {
-            if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) {
-              if (ContextCompat.checkSelfPermission(MainActivity.this,
-                  Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                grantedResources.add(resource);
-              }
-            } else if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) {
-              if (ContextCompat.checkSelfPermission(MainActivity.this,
-                  Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                grantedResources.add(resource);
-              }
-            } else {
-              // Grant other resources (e.g. protected media)
+        for (String resource : resources) {
+          if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) {
+            if (ContextCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
               grantedResources.add(resource);
             }
-          }
-
-          if (!grantedResources.isEmpty()) {
-            request.grant(grantedResources.toArray(new String[0]));
+          } else if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) {
+            if (ContextCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+              grantedResources.add(resource);
+            }
           } else {
-            request.deny();
+            // Grant other resources (e.g. protected media)
+            grantedResources.add(resource);
           }
-        });
+        }
+
+        if (!grantedResources.isEmpty()) {
+          request.grant(grantedResources.toArray(new String[0]));
+        } else {
+          request.deny();
+        }
       }
     });
   }
@@ -91,11 +85,6 @@ public class MainActivity extends BridgeActivity {
       permissionsToRequest.add(Manifest.permission.RECORD_AUDIO);
     }
 
-    if (ContextCompat.checkSelfPermission(this, Manifest.permission.MODIFY_AUDIO_SETTINGS)
-        != PackageManager.PERMISSION_GRANTED) {
-      permissionsToRequest.add(Manifest.permission.MODIFY_AUDIO_SETTINGS);
-    }
-
     if (!permissionsToRequest.isEmpty()) {
       ActivityCompat.requestPermissions(this,
           permissionsToRequest.toArray(new String[0]),
@@ -103,3 +92,9 @@ public class MainActivity extends BridgeActivity {
     }
   }
 }
+
+
+
+
+
+
