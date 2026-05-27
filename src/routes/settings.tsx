@@ -202,32 +202,32 @@ function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Navigation Sidebar */}
-        <div className="lg:col-span-3 flex flex-col gap-4">
+        <div className="lg:col-span-3 flex flex-row lg:flex-col gap-3 overflow-x-auto pb-4 lg:pb-0 scrollbar-none shrink-0 -mx-4 px-4 lg:mx-0 lg:px-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "group flex items-center justify-between p-5 rounded-3xl border transition-all duration-500",
+                "group flex items-center justify-between p-4 lg:p-5 rounded-2xl lg:rounded-3xl border transition-all duration-500 shrink-0",
                 activeTab === tab.id
                   ? "bg-primary/10 border-primary/20 text-primary shadow-glow"
                   : "bg-muted/20 dark:bg-white/[0.02] border-border/60 dark:border-white/5 text-muted-foreground dark:text-white/40 hover:bg-muted/30 dark:hover:bg-white/[0.05] hover:text-foreground dark:hover:text-white"
               )}
             >
-              <div className="flex items-center gap-4">
-                <tab.icon className={cn("w-5 h-5", activeTab === tab.id ? "text-primary" : "text-muted-foreground dark:text-zinc-500")} />
-                <span className="text-xs font-black uppercase tracking-[0.2em]">{tab.label}</span>
+              <div className="flex items-center gap-3 lg:gap-4">
+                <tab.icon className={cn("w-4 h-4 lg:w-5 lg:h-5", activeTab === tab.id ? "text-primary" : "text-muted-foreground dark:text-zinc-500")} />
+                <span className="text-[10px] lg:text-xs font-black uppercase tracking-[0.2em]">{tab.label}</span>
               </div>
-              <ChevronRight className={cn("w-4 h-4 transition-transform", activeTab === tab.id ? "translate-x-0" : "-translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0")} />
+              <ChevronRight className={cn("hidden lg:block w-4 h-4 transition-transform", activeTab === tab.id ? "translate-x-0" : "-translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0")} />
             </button>
           ))}
           
           <button
             onClick={signOut}
-            className="flex items-center gap-4 p-5 rounded-3xl bg-secondary/5 border border-secondary/10 text-secondary hover:bg-secondary/10 transition-all mt-10 active:scale-95"
+            className="flex items-center gap-3 lg:gap-4 p-4 lg:p-5 rounded-2xl lg:rounded-3xl bg-secondary/5 border border-secondary/10 text-secondary hover:bg-secondary/10 transition-all lg:mt-10 active:scale-95 shrink-0"
           >
-            <LogOut className="w-5 h-5" />
-            <span className="text-xs font-black uppercase tracking-[0.2em]">Log Out System</span>
+            <LogOut className="w-4 h-4 lg:w-5 lg:h-5" />
+            <span className="text-[10px] lg:text-xs font-black uppercase tracking-[0.2em]">Log Out</span>
           </button>
         </div>
 
@@ -356,63 +356,61 @@ function SettingsPage() {
                           </button>
                        </div>
 
-                       {profile?.passkey_registered && (
-                         <div className="pt-4 border-t border-border/35 dark:border-white/5 space-y-4">
-                           <Label className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground dark:text-white/40 block">Preferred Verification Mode</Label>
-                           <div className="grid grid-cols-3 gap-3">
-                             <button
-                               onClick={() => {
-                                 setPreferredBiometricMode("fingerprint");
-                                 localStorage.setItem("preferred_biometric_mode", "fingerprint");
-                                 toast.success("Punch Verification set to Fingerprint Preferred");
-                               }}
-                               className={cn(
-                                 "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300",
-                                 preferredBiometricMode === "fingerprint"
-                                   ? "bg-primary/10 border-primary/30 text-primary shadow-glow animate-pulse"
-                                   : "bg-muted/10 dark:bg-white/[0.01] border-border/60 dark:border-white/5 text-muted-foreground hover:bg-muted/20"
-                               )}
-                             >
-                               <Fingerprint className="w-4 h-4" />
-                               <span>Fingerprint</span>
-                             </button>
+                       <div className="pt-4 border-t border-border/35 dark:border-white/5 space-y-4">
+                         <Label className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground dark:text-white/40 block">Preferred Verification Mode</Label>
+                         <div className="grid grid-cols-3 gap-3">
+                           <button
+                             onClick={() => {
+                               setPreferredBiometricMode("fingerprint");
+                               localStorage.setItem("preferred_biometric_mode", "fingerprint");
+                               toast.success("Punch Verification set to Fingerprint Preferred");
+                             }}
+                             className={cn(
+                               "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300",
+                               preferredBiometricMode === "fingerprint"
+                                 ? "bg-primary/10 border-primary/30 text-primary shadow-glow animate-pulse"
+                                 : "bg-muted/10 dark:bg-white/[0.01] border-border/60 dark:border-white/5 text-muted-foreground hover:bg-muted/20"
+                             )}
+                           >
+                             <Fingerprint className="w-4 h-4" />
+                             <span>Fingerprint</span>
+                           </button>
 
-                             <button
-                               onClick={() => {
-                                 setPreferredBiometricMode("face");
-                                 localStorage.setItem("preferred_biometric_mode", "face");
-                                 toast.success("Punch Verification set to Face Recognition Preferred");
-                               }}
-                               className={cn(
-                                 "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300",
-                                 preferredBiometricMode === "face"
-                                   ? "bg-primary/10 border-primary/30 text-primary shadow-glow animate-pulse"
-                                   : "bg-muted/10 dark:bg-white/[0.01] border-border/60 dark:border-white/5 text-muted-foreground hover:bg-muted/20"
-                               )}
-                             >
-                               <Camera className="w-4 h-4" />
-                               <span>Face ID / Auth</span>
-                             </button>
+                           <button
+                             onClick={() => {
+                               setPreferredBiometricMode("face");
+                               localStorage.setItem("preferred_biometric_mode", "face");
+                               toast.success("Punch Verification set to Face Recognition Preferred");
+                             }}
+                             className={cn(
+                               "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300",
+                               preferredBiometricMode === "face"
+                                 ? "bg-primary/10 border-primary/30 text-primary shadow-glow animate-pulse"
+                                 : "bg-muted/10 dark:bg-white/[0.01] border-border/60 dark:border-white/5 text-muted-foreground hover:bg-muted/20"
+                             )}
+                           >
+                             <Camera className="w-4 h-4" />
+                             <span>Face ID / Auth</span>
+                           </button>
 
-                             <button
-                               onClick={() => {
-                                 setPreferredBiometricMode("system");
-                                 localStorage.setItem("preferred_biometric_mode", "system");
-                                 toast.success("Punch Verification set to System Auto Select");
-                               }}
-                               className={cn(
-                                 "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300",
-                                 preferredBiometricMode === "system"
-                                   ? "bg-primary/10 border-primary/30 text-primary shadow-glow animate-pulse"
-                                   : "bg-muted/10 dark:bg-white/[0.01] border-border/60 dark:border-white/5 text-muted-foreground hover:bg-muted/20"
-                               )}
-                             >
-                               <Sparkles className="w-4 h-4" />
-                               <span>System Choice</span>
-                             </button>
-                           </div>
+                           <button
+                             onClick={() => {
+                               setPreferredBiometricMode("system");
+                               localStorage.setItem("preferred_biometric_mode", "system");
+                               toast.success("Punch Verification set to System Auto Select");
+                             }}
+                             className={cn(
+                               "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300",
+                               preferredBiometricMode === "system"
+                                 ? "bg-primary/10 border-primary/30 text-primary shadow-glow animate-pulse"
+                                 : "bg-muted/10 dark:bg-white/[0.01] border-border/60 dark:border-white/5 text-muted-foreground hover:bg-muted/20"
+                             )}
+                           >
+                             <Sparkles className="w-4 h-4" />
+                             <span>System Choice</span>
+                           </button>
                          </div>
-                       )}
+                       </div>
                     </div>
 
                    <SecurityItem 

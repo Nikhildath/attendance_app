@@ -28,8 +28,8 @@ public class MainActivity extends BridgeActivity {
     registerPlugin(ScreenSharePlugin.class);
     registerPlugin(BackgroundTrackerPlugin.class);
 
-    // Request runtime permissions upfront for camera and microphone
-    requestMediaPermissionsIfNeeded();
+    // Request runtime permissions upfront for camera, microphone, location, and notifications
+    requestAppPermissionsIfNeeded();
 
     // Override the WebChromeClient using BridgeWebChromeClient to auto-grant WebRTC permission requests
     // while preserving all standard Capacitor bridge functionality (e.g. file picking, alerts).
@@ -68,11 +68,10 @@ public class MainActivity extends BridgeActivity {
   }
 
   /**
-   * Request camera and microphone permissions at app startup.
-   * This ensures that when getUserMedia() is called from the WebView,
-   * the Android-level permissions are already granted.
+   * Request necessary app permissions upfront (camera, microphone, location, notifications).
+   * This ensures that web and background tracking features have runtime permissions immediately.
    */
-  private void requestMediaPermissionsIfNeeded() {
+  private void requestAppPermissionsIfNeeded() {
     List<String> permissionsToRequest = new ArrayList<>();
 
     if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -83,6 +82,23 @@ public class MainActivity extends BridgeActivity {
     if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
         != PackageManager.PERMISSION_GRANTED) {
       permissionsToRequest.add(Manifest.permission.RECORD_AUDIO);
+    }
+
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+        != PackageManager.PERMISSION_GRANTED) {
+      permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION);
+    }
+
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+        != PackageManager.PERMISSION_GRANTED) {
+      permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+          != PackageManager.PERMISSION_GRANTED) {
+        permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS);
+      }
     }
 
     if (!permissionsToRequest.isEmpty()) {
