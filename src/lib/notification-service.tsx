@@ -6,6 +6,7 @@ import { CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY } from "@/lib/config";
 import { socketService } from "@/lib/socket-service";
 import { SOCKET_URL } from "@/lib/config";
 import { requestNotificationPermission, showLocalNotification, subscribeToPush } from "@/lib/push";
+import { useCall } from "./call-context";
 
 const PushNotifications = registerPlugin<any>("PushNotifications");
 
@@ -59,6 +60,7 @@ async function registerFCM(userId: string) {
 export function NotificationProvider({ userId, children }: { userId: string | undefined; children: ReactNode }) {
   const profileIdRef = useRef(userId);
   const suppressChatRef = useRef(false);
+  const { setIncomingCall, setInCall } = useCall();
 
   useEffect(() => {
     profileIdRef.current = userId;
@@ -83,6 +85,25 @@ export function NotificationProvider({ userId, children }: { userId: string | un
     if (!socketService.isConnected()) {
       socketService.connect(SOCKET_URL, '', userId).catch(() => {});
     }
+
+    // Listen for incoming calls globally
+    const unsubIncomingCall = socketService.onIncomingCall((data) => {
+      console.log("📞 [Global] Incoming call received:", data);
+      setIncomingCall({ 
+        callerName: data.name, 
+        callerId: data.from, 
+        roomId: data.roomId 
+      });
+    });
+
+    // Listen for call ended globally
+    const unsubCallEnded = socketService.onCallEnded((data) => {
+      console.log("📞 [Global] Call ended by:", data.from);
+      setIncomingCall(null);
+      // Only set inCall false if the person who ended the call is the one we were talking to
+      // This is a simple check, could be more robust
+      setInCall(false);
+    });
 
     // Listen for chat notifications via socket (primary, faster)
     const unsubChatNotif = socketService.onChatNotification((data) => {
@@ -117,10 +138,12 @@ export function NotificationProvider({ userId, children }: { userId: string | un
       .subscribe();
 
     return () => {
+      unsubIncomingCall();
+      unsubCallEnded();
       unsubChatNotif();
       chatSupabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [userId, setIncomingCall, setInCall]);
 
   const notifyDashboard = (title: string, body: string) => {
     showLocalNotification({ title, body, icon: "/icon-192.png", data: { url: "/" } });

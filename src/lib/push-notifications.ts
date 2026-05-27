@@ -17,59 +17,54 @@ async function registerNativePush(userId: string) {
   if (permResult.receive !== "granted") return;
 
   try {
+    // High-priority channel for "ringing" effect
     await PushNotifications.createChannel({
       id: "incoming_calls",
       name: "Incoming Calls",
-      description: "Notifications for incoming video calls",
+      description: "Ringtone and vibration for incoming calls",
       importance: 5,
       vibration: true,
-      sound: "default",
+      sound: "ringtone",
       visibility: 1,
     });
   } catch {
-    // Channel may already exist
+    // skip
   }
 
   await PushNotifications.register();
 
   PushNotifications.addListener("registration", async (token) => {
-    const existing = await supabase
-      .from("user_push_tokens")
-      .select("id")
-      .eq("token", token.value)
-      .maybeSingle();
-
-    if (existing.data) return;
-
     await supabase.from("user_push_tokens").upsert(
       {
         user_id: userId,
         token: token.value,
-        platform: Capacitor.getPlatform() === "android" ? "android" : "ios",
+        platform: "android",
       },
-      { onConflict: "token", ignoreDuplicates: false }
+      { onConflict: "token" }
     );
   });
 
   PushNotifications.addListener("pushNotificationReceived", (notification) => {
+    console.log("📲 [Native Push] Received:", notification);
     const data = notification.data as Record<string, unknown>;
+    
     if (data?.type === "call" && data?.roomId && data?.callerName) {
-      window.dispatchEvent(
-        new CustomEvent("incoming-call", {
-          detail: {
-            callerName: data.callerName,
-            callerId: data.callerId || "",
-            roomId: data.roomId,
-          },
-        })
-      );
+       // Trigger the ringing UI if the app is open
+       window.dispatchEvent(new CustomEvent('incoming-call', { 
+         detail: {
+           callerName: data.callerName,
+           callerId: data.callerId,
+           roomId: data.roomId
+         } 
+       }));
     }
   });
 
   PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
     const data = action.notification.data as Record<string, unknown>;
-    if (action.actionId === "accept" && data?.roomId && data?.callerName) {
-      window.location.href = `/meetings?call=incoming&room=${data.roomId}&from=${data.callerId || ""}&name=${encodeURIComponent(data.callerName as string)}`;
+    if (data?.type === "call" && data?.roomId) {
+       const url = `/meetings?call=incoming&room=${data.roomId}&from=${data.callerId || ""}&name=${encodeURIComponent(data.callerName as string)}`;
+       window.location.href = url;
     }
   });
 }
@@ -89,14 +84,6 @@ async function registerWebPush(userId: string) {
 
   const subJson = subscription.toJSON();
 
-  const existing = await supabase
-    .from("user_push_tokens")
-    .select("id")
-    .eq("token", subJson.endpoint as string)
-    .maybeSingle();
-
-  if (existing.data) return;
-
   await supabase.from("user_push_tokens").upsert(
     {
       user_id: userId,
@@ -104,7 +91,7 @@ async function registerWebPush(userId: string) {
       platform: "web",
       subscription_json: subJson as Record<string, unknown>,
     },
-    { onConflict: "token", ignoreDuplicates: false }
+    { onConflict: "token" }
   );
 }
 

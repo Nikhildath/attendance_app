@@ -30,13 +30,20 @@ webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 let fcmAvailable = false;
 try {
   const fcmKeyPath = resolve('firebase-service-account.json');
+  const envServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+  
   if (existsSync(fcmKeyPath)) {
     const serviceAccount = JSON.parse(readFileSync(fcmKeyPath, 'utf8'));
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     fcmAvailable = true;
-    console.log('[FCM] Firebase Admin initialized. Native push enabled.');
+    console.log('[FCM] Firebase Admin initialized from file.');
+  } else if (envServiceAccount) {
+    const serviceAccount = JSON.parse(Buffer.from(envServiceAccount, 'base64').toString('utf8'));
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    fcmAvailable = true;
+    console.log('[FCM] Firebase Admin initialized from environment variable.');
   } else {
-    console.warn('[FCM] firebase-service-account.json not found. Native FCM push disabled.');
+    console.warn('[FCM] Firebase Service Account not found. Native FCM push disabled.');
   }
 } catch (e) {
   console.warn('[FCM] Failed to initialize Firebase Admin:', e.message);
@@ -54,34 +61,39 @@ async function sendFcmPush(token, payload) {
       },
       android: {
         priority: 'high',
+        ttl: 0, 
         notification: {
           channelId: 'incoming_calls',
           priority: 'max',
-          sound: 'default',
-          vibrationPattern: [200, 100, 200, 100, 200],
+          sound: 'ringtone',
+          vibrationPattern: [200, 100, 200, 100, 200, 100, 200],
           color: '#22c55e',
+          sticky: true,
+          visibility: 'public',
         },
       },
       apns: {
         payload: {
           aps: {
-            sound: 'default',
+            sound: 'ringtone',
             category: 'INCOMING_CALL',
             'content-available': 1,
+            priority: 10,
           },
         },
       },
       webpush: {
         headers: { Urgency: 'high' },
         notification: {
-          vibrate: [200, 100, 200],
+          vibrate: [200, 100, 200, 100, 200],
           requireInteraction: true,
           actions: payload.actions || [],
+          tag: payload.data?.roomId || 'call',
         },
         fcmOptions: { link: payload.data?.url || '' },
       },
     });
-    console.log('[FCM] Push sent successfully');
+    console.log('[FCM] High-priority call push sent');
   } catch (err) {
     console.warn('[FCM] Send failed:', err.message);
     if (err.errorInfo?.code === 'messaging/registration-token-not-registered') {

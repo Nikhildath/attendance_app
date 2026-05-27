@@ -20,6 +20,7 @@ DROP FUNCTION IF EXISTS public.update_own_face(uuid, jsonb);
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================================
 -- 2. TABLES
@@ -437,20 +438,27 @@ CREATE OR REPLACE FUNCTION public.admin_insert_profile(
 )
 RETURNS jsonb AS $$
 DECLARE
-  auth_user_exists boolean;
+  existing_auth_user record;
+  final_id uuid;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = caller_id AND role = 'Admin') THEN
     RAISE EXCEPTION 'Access Denied';
   END IF;
 
-  SELECT EXISTS(SELECT 1 FROM auth.users WHERE id = p_id) INTO auth_user_exists;
+  -- Check if email already exists in auth.users
+  SELECT id, email INTO existing_auth_user FROM auth.users WHERE email = p_email;
 
-  IF NOT auth_user_exists THEN
+  IF existing_auth_user.id IS NOT NULL THEN
+    -- Email exists in auth.users — reuse the existing ID
+    final_id := existing_auth_user.id;
+  ELSE
+    -- New user — use the provided UUID
+    final_id := p_id;
     INSERT INTO auth.users (
       id, email, encrypted_password, email_confirmed_at,
       created_at, updated_at, raw_app_meta_data, raw_user_meta_data, aud, role
     ) VALUES (
-      p_id, p_email,
+      final_id, p_email,
       crypt(p_password, gen_salt('bf')),
       now(), now(), now(),
       '{"provider":"email","providers":["email"]}'::jsonb,
@@ -460,8 +468,9 @@ BEGIN
   END IF;
 
   INSERT INTO public.profiles (id, email, name, role, dept, password, dob, joining_date, avatar_url)
-  VALUES (p_id, p_email, p_name, p_role, p_dept, p_password, p_dob, p_joining_date, p_avatar_url)
+  VALUES (final_id, p_email, p_name, p_role, p_dept, p_password, p_dob, p_joining_date, p_avatar_url)
   ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
     name = EXCLUDED.name,
     role = EXCLUDED.role,
     dept = EXCLUDED.dept,
@@ -471,12 +480,7 @@ BEGIN
     avatar_url = EXCLUDED.avatar_url,
     updated_at = NOW();
 
-  RETURN jsonb_build_object('success', true, 'id', p_id);
-EXCEPTION
-  WHEN unique_violation THEN
-    RAISE EXCEPTION 'A user with this email already exists';
-  WHEN OTHERS THEN
-    RAISE EXCEPTION '%', SQLERRM;
+  RETURN jsonb_build_object('success', true, 'id', final_id);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth, extensions;
 

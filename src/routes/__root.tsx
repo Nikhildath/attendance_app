@@ -12,6 +12,7 @@ import { UpdateChecker } from "@/components/common/UpdateChecker";
 import { PWAInstallPrompt } from "@/components/common/PWAInstallPrompt";
 import { NotificationProvider } from "@/lib/notification-service";
 import { CallProvider } from "@/lib/call-context";
+import { GlobalCallManager } from "@/components/common/GlobalCallManager";
 
 function NotFoundComponent() {
   return (
@@ -64,6 +65,7 @@ function RootComponent() {
                 <RootContent />
                 <LiveTracker />
                 <UpdateChecker />
+                <GlobalCallManager />
                 <Toaster />
               </NotificationProviderShell>
             </CallProvider>
@@ -112,10 +114,6 @@ function RootContent() {
       });
     };
   }, [profile?.id]);
-
-  // We removed the blocking loading screen to prevent the app from hanging.
-  // The AuthProvider still handles auth state, but we allow the app to render immediately.
-
 
   return (
     <>

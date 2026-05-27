@@ -8,8 +8,6 @@ import { supabase } from "@/lib/supabase";
 import { socketService } from "@/lib/socket-service";
 import { SOCKET_URL } from "@/lib/config";
 import { cn } from "@/lib/utils";
-import { VideoCall } from "@/components/common/VideoCall";
-import { IncomingCallScreen } from "@/components/common/IncomingCallScreen";
 import { registerPushNotifications } from "@/lib/push-notifications";
 import { useCall } from "@/lib/call-context";
 import { Avatar2D } from "@/components/common/Avatar2D";
@@ -52,14 +50,12 @@ function MeetingsPage() {
   const { profile, isAdmin, isManager } = useAuth();
   const navigate = useNavigate();
   const search = useSearch({ from: Route.id });
-  const { setInCall } = useCall();
+  const { setActiveCall, setInCall } = useCall();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"upcoming" | "past" | "calendar">("upcoming");
   const [showSchedule, setShowSchedule] = useState(false);
-  const [activeCall, setActiveCall] = useState<{ roomId: string; isDirect: boolean; calleeName?: string; calleeId?: string } | null>(null);
-  const [incomingCall, setIncomingCall] = useState<{ callerName: string; callerId: string; roomId: string } | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [canStartCall, setCanStartCall] = useState(false);
 
@@ -90,32 +86,11 @@ function MeetingsPage() {
     setCanStartCall(!!(profile && (isAdmin || isManager || profile.role === "Employee")));
   }, [profile, isAdmin, isManager]);
 
-  // Listen for incoming calls
-  useEffect(() => {
-    const unsub = socketService.onIncomingCall((data) => {
-      setIncomingCall({ callerName: data.name, callerId: data.from, roomId: data.roomId });
-    });
-    return unsub;
-  }, []);
-
-  // Listen for call ended (caller hung up before we answered, or callee declined)
-  useEffect(() => {
-    const unsub = socketService.onCallEnded((data) => {
-      setIncomingCall((prev) => (prev && data.from === prev.callerId ? null : prev));
-      setActiveCall((prev) => (prev && data.from !== profile?.id ? null : prev));
-    });
-    return unsub;
-  }, [profile?.id]);
-
   // Check if opened from push notification (call=incoming param)
   useEffect(() => {
     const params = search as Record<string, unknown>;
     if (params.call === "incoming" && params.room && params.from && params.name && profile) {
-      setIncomingCall({
-        callerName: decodeURIComponent(params.name as string),
-        callerId: params.from as string,
-        roomId: params.room as string,
-      });
+      // GlobalCallManager now handles this through the notification service
       navigate({ to: "/meetings", replace: true });
     }
   }, [search, profile]);
@@ -206,26 +181,15 @@ function MeetingsPage() {
   };
 
   const startCall = (meeting: Meeting) => {
-    setActiveCall({ roomId: meeting.room_name, isDirect: false });
+    setActiveCall({ roomId: meeting.room_name });
+    setInCall(true);
   };
 
   const startDirectCall = (targetProfile: Profile) => {
-    const roomName = crypto.randomUUID();
+    const roomName = `direct-${profile!.id}-${targetProfile.id}-${Date.now()}`;
     socketService.initiateDirectCall(targetProfile.id, profile!.name, roomName);
-    setActiveCall({ roomId: roomName, isDirect: true, calleeName: targetProfile.name, calleeId: targetProfile.id });
-  };
-
-  const handleAcceptIncoming = (roomId: string) => {
-    setIncomingCall(null);
-    setActiveCall({ roomId, isDirect: true });
-  };
-
-  const handleRejectIncoming = () => {
-    setIncomingCall(null);
-  };
-
-  const handleIgnoreIncoming = () => {
-    setIncomingCall(null);
+    setActiveCall({ roomId: roomName, calleeName: targetProfile.name });
+    setInCall(true);
   };
 
   const calendarDays = eachDayOfInterval({
@@ -424,38 +388,6 @@ function MeetingsPage() {
             </form>
           </div>
         </div>
-      )}
-
-      {/* Incoming Call Screen */}
-      {incomingCall && profile && (
-        <IncomingCallScreen
-          callerName={incomingCall.callerName}
-          callerId={incomingCall.callerId}
-          roomId={incomingCall.roomId}
-          onAccept={handleAcceptIncoming}
-          onReject={handleRejectIncoming}
-          onIgnore={handleIgnoreIncoming}
-        />
-      )}
-
-      {/* Video Call Overlay */}
-      {activeCall && profile && (
-        <VideoCall
-          roomId={activeCall.roomId}
-          userId={profile.id}
-          userName={profile.name}
-          isDirect={activeCall.isDirect}
-          calleeName={activeCall.calleeName}
-          profiles={profiles.map(p => ({ id: p.id, name: p.name, avatar_url: p.avatar_url, role: p.role }))}
-          onEnd={() => {
-            if (activeCall.isDirect && activeCall.calleeId) {
-              socketService.endCall(activeCall.calleeId);
-            }
-            setActiveCall(null);
-            setInCall(false);
-          }}
-          onReady={() => setInCall(true)}
-        />
       )}
     </div>
   );
