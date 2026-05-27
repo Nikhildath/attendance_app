@@ -79,65 +79,106 @@ const locationLimiter = rateLimit({
 app.use(cors());
 app.use(express.json());
 
-// Root endpoint — show server info when visited in browser
+// Root endpoint — show live server status when visited in browser
 app.get('/', (req, res) => {
   const uptime = Math.floor(process.uptime());
   const hours = Math.floor(uptime / 3600);
   const mins = Math.floor((uptime % 3600) / 60);
   const secs = uptime % 60;
+
+  const totalSockets = io.engine?.clientsCount || 0;
+  const connectedUserIds = [...connectedUsers.keys()].slice(0, 20);
+  const connectedCount = connectedUsers.size;
+
+  // Collect active Socket.IO rooms (video rooms)
+  const allRooms = io.sockets?.adapter?.rooms;
+  const videoRooms = [];
+  if (allRooms) {
+    allRooms.forEach((sockets, room) => {
+      if (room.startsWith('direct-')) videoRooms.push(room);
+    });
+  }
+
+  const userList = connectedUserIds.length
+    ? connectedUserIds.map(id => `<span class="tag blue" style="margin:2px">${id.slice(0, 8)}</span>`).join('')
+    : '<span style="color:#64748b">None</span>';
+
+  const roomList = videoRooms.length
+    ? videoRooms.map(r => {
+        const parts = r.split('-');
+        const id = parts.find(p => p.length > 20) || r.slice(0, 16);
+        return `<div style="margin:4px 0; font-size:0.85rem;">📞 <code>${r.slice(0, 30)}...</code></div>`;
+      }).join('')
+    : '<span style="color:#64748b">None</span>';
+
   res.send(`
     <!DOCTYPE html>
     <html>
     <head>
       <title>Attendly Socket Server</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta http-equiv="refresh" content="10">
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; background: #0f172a; color: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 680px; margin: 40px auto; padding: 0 20px; background: #0f172a; color: #e2e8f0; }
         h1 { color: #22c55e; font-size: 1.8rem; }
         .card { background: #1e293b; border-radius: 12px; padding: 20px; margin: 16px 0; }
+        .card h2 { margin: 0 0 12px 0; font-size: 1.1rem; }
         .tag { display: inline-block; background: #22c55e20; color: #22c55e; padding: 2px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-right: 6px; }
         .tag.blue { background: #3b82f620; color: #60a5fa; }
         .tag.purple { background: #a855f720; color: #c084fc; }
         dt { font-weight: 600; color: #94a3b8; margin-top: 12px; font-size: 0.85rem; }
         dd { margin-left: 0; margin-top: 2px; }
         a { color: #60a5fa; }
-        .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
-        .status.online { background: #22c55e; box-shadow: 0 0 8px #22c55e80; }
+        .num { font-size: 2rem; font-weight: 800; color: #22c55e; }
+        .num-label { color: #64748b; font-size: 0.8rem; }
+        .stat-row { display: flex; gap: 24px; flex-wrap: wrap; }
+        .stat { text-align: center; min-width: 80px; }
+        .ref { text-align: center; color: #475569; font-size: 0.75rem; margin-bottom: 8px; }
       </style>
     </head>
     <body>
       <h1>Attendly Socket Server</h1>
-      <p style="color: #94a3b8; margin-top: -8px;">Real-time engine for the Attendly attendance app</p>
+      <p style="color: #94a3b8; margin-top: -8px;">Real-time engine</p>
+      <div class="ref">Auto-refreshes every 10s</div>
 
       <div class="card">
-        <h2 style="margin:0 0 12px 0; font-size:1.1rem;">Status</h2>
-        <span class="status online"></span> Running
+        <h2>Live Now</h2>
+        <div class="stat-row">
+          <div class="stat"><div class="num">${totalSockets}</div><div class="num-label">Socket Connections</div></div>
+          <div class="stat"><div class="num">${connectedCount}</div><div class="num-label">Connected Users</div></div>
+          <div class="stat"><div class="num">${videoRooms.length}</div><div class="num-label">Active Calls</div></div>
+        </div>
         <div style="margin-top:8px; color:#94a3b8; font-size:0.9rem;">
           Uptime: ${hours}h ${mins}m ${secs}s
         </div>
       </div>
 
       <div class="card">
-        <h2 style="margin:0 0 12px 0; font-size:1.1rem;">What it does</h2>
-        <dl>
-          <dt>Live Location Tracking</dt>
-          <dd style="color:#94a3b8; font-size:0.9rem;">Receives and broadcasts field staff GPS positions in real time.</dd>
-
-          <dt>Direct Video Calls</dt>
-          <dd style="color:#94a3b8; font-size:0.9rem;">Relays WebRTC signaling (offers, answers, ICE candidates) between peers for one-to-one video calls.</dd>
-
-          <dt>Push Notifications</dt>
-          <dd style="color:#94a3b8; font-size:0.9rem;">Sends high-priority FCM (Android) and Web Push notifications for incoming calls.</dd>
-
-          <dt>Chat</dt>
-          <dd style="color:#94a3b8; font-size:0.9rem;">Routes real-time chat messages between users.</dd>
-        </dl>
+        <h2>Active Video Calls</h2>
+        ${roomList}
       </div>
 
       <div class="card">
-        <h2 style="margin:0 0 12px 0; font-size:1.1rem;">Endpoints</h2>
+        <h2>Connected Users (${connectedCount})</h2>
+        <div>${userList}</div>
+      </div>
+
+      <div class="card">
+        <h2>Services</h2>
+        <dt>Live Location Tracking</dt>
+        <dd style="color:#94a3b8; font-size:0.9rem;">Field staff GPS positions.</dd>
+        <dt>Direct Video Calls</dt>
+        <dd style="color:#94a3b8; font-size:0.9rem;">WebRTC signaling relay for one-to-one calls.</dd>
+        <dt>Push Notifications</dt>
+        <dd style="color:#94a3b8; font-size:0.9rem;">Web Push for incoming calls.</dd>
+      </div>
+
+      <div class="card">
+        <h2>Endpoints</h2>
         <span class="tag purple">GET</span> <a href="/health">/health</a> — Health check<br>
-        <span class="tag purple" style="margin-top:6px; display:inline-block;">POST</span> /api/location — Background location (requires API key)
+        <span class="tag purple" style="margin-top:6px; display:inline-block;">POST</span> /api/location — Background location<br>
+        <span class="tag purple" style="margin-top:6px; display:inline-block;">POST</span> /api/push/register-fcm — Register FCM token<br>
+        <span class="tag purple" style="margin-top:6px; display:inline-block;">POST</span> /api/push/send — Send push notification
       </div>
 
       <div style="text-align:center; color:#475569; font-size:0.8rem; margin-top:24px;">
@@ -392,6 +433,7 @@ io.use(async (socket, next) => {
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.userId}`);
   connectedUsers.set(socket.userId, socket.id);
+  socket.join(socket.userId); // Join personal room for direct messaging
 
   // Request all staff locations
   socket.on('request_staff_locations', async () => {
@@ -555,6 +597,118 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error updating status:', error);
     }
+  });
+  // ===================== VIDEO CALL EVENTS =====================
+
+  // Join a video meeting room
+  socket.on('video:join-room', (data) => {
+    if (!socket.userId || !data?.roomId) return;
+    socket.join(data.roomId);
+    console.log(`🎥 User ${socket.userId} joined video room: ${data.roomId}`);
+    socket.to(data.roomId).emit('video:user-joined', {
+      userId: socket.userId,
+      name: data.name || 'Unknown',
+    });
+  });
+
+  // Leave a video meeting room
+  socket.on('video:leave-room', (data) => {
+    if (!data?.roomId) return;
+    socket.leave(data.roomId);
+    socket.to(data.roomId).emit('video:user-left', {
+      userId: socket.userId,
+    });
+    console.log(`🎥 User ${socket.userId} left video room: ${data.roomId}`);
+  });
+
+  // WebRTC signal forwarding
+  socket.on('video:signal', (data) => {
+    if (!socket.userId || !data?.to || !data?.signal) return;
+    io.to(data.to).emit('video:signal', {
+      from: socket.userId,
+      signal: data.signal,
+      name: data.name || 'Unknown',
+    });
+  });
+
+  // Direct call initiation
+  socket.on('video:direct-call', async (data) => {
+    if (!socket.userId || !data?.to) return;
+
+    // Always emit to socket if callee is connected
+    io.to(data.to).emit('video:incoming-call', {
+      from: socket.userId,
+      name: data.name || 'Unknown',
+      roomId: data.roomId,
+    });
+
+    // Send push notification for background/closed app
+    if (!vapidPublicKey || !vapidPrivateKey) return;
+    try {
+      const callUrl = `/meetings?call=incoming&room=${data.roomId}&from=${socket.userId}&name=${encodeURIComponent(data.name || 'Unknown')}`;
+      const payload = {
+        title: 'Incoming Call',
+        body: `${data.name || 'Someone'} is calling you`,
+        data: {
+          url: callUrl,
+          type: 'call',
+          callerName: data.name || 'Unknown',
+          callerId: socket.userId,
+          roomId: data.roomId,
+        },
+        actions: [
+          { action: 'accept', title: 'Accept' },
+          { action: 'reject', title: 'Decline' },
+        ],
+      };
+      const { data: subscriptions } = await chatSupabase
+        .from('push_subscriptions')
+        .select('subscription, fcm_token')
+        .eq('user_id', data.to);
+
+      if (subscriptions && subscriptions.length > 0) {
+        for (const sub of subscriptions) {
+          try {
+            if (sub.subscription) {
+              const webPayload = JSON.stringify({ ...payload, icon: '/icon-192.png', badge: '/favicon.ico', vibrate: [200, 100, 200, 100, 200], tag: `call-${data.roomId}`, renotify: true, requireInteraction: true, silent: false });
+              await webpush.sendNotification(sub.subscription, webPayload);
+            }
+          } catch (pushErr) {
+            if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+              await chatSupabase.from('push_subscriptions').update({ subscription: null }).eq('user_id', data.to);
+            }
+          }
+        }
+      }
+    } catch (dbErr) {
+      console.error('[Push] Error sending call push:', dbErr.message);
+    }
+  });
+
+  // Call ended
+  socket.on('video:end-call', (data) => {
+    if (!data?.to) return;
+    io.to(data.to).emit('video:call-ended', {
+      from: socket.userId,
+    });
+  });
+
+  // Screen share state
+  socket.on('video:screen-share', (data) => {
+    if (!socket.userId || !data?.roomId) return;
+    socket.to(data.roomId).emit('video:screen-share', {
+      userId: socket.userId,
+      sharing: data.sharing,
+    });
+  });
+
+  // Video toggle notification (camera on/off)
+  socket.on('video:toggle-video', (data) => {
+    if (!socket.userId || !data?.roomId) return;
+    socket.to(data.roomId).emit('video:toggle-video', {
+      userId: socket.userId,
+      videoOff: data.videoOff,
+    });
   });
 });
 
